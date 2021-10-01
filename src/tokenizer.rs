@@ -30,9 +30,18 @@ macro_rules! symbols_without_dot_or_space {
     };
 }
 
-macro_rules! maltchars_symbol_array {
+macro_rules! twochars_symbol_array {
     () => {
-        ["<<", ">>", "++", "--", "==", "||", "&&"]
+        [
+            "<<", ">>", "++", "--", "==", "||", "&&", "+=", "-=", "*=", "/=", "%=", "&=", "^=",
+            "|=", "->",
+        ]
+    };
+}
+
+macro_rules! threechars_symbol_array {
+    () => {
+        ["<<=", ">>="]
     };
 }
 pub enum NumberToken {
@@ -151,9 +160,9 @@ impl Token {
 fn tokenizer_panic(err: TokenizeError, info: &TokenizeInfo) -> ! {
     let error_line;
     unsafe {
-        error_line = &SOURCE_TXT[info.line];        
+        error_line = &SOURCE_TXT[info.line];
     }
-    eprintln!("{}", error_line); 
+    eprintln!("{}", error_line);
     let mut error_cur = " ".repeat(info.pos);
     error_cur.push_str("^");
     eprintln!("{}", error_cur);
@@ -230,6 +239,10 @@ impl TokenizeLine {
         } else {
             false
         }
+    }
+
+    fn peek_nextchar(&self, step: usize) -> Option<char> {
+        self.line.get(self.cur + step).cloned()
     }
 
     fn peek_char(&self) -> char {
@@ -363,29 +376,55 @@ fn get_identifier(tokenize_line: &mut TokenizeLine, token_chars: &mut Vec<char>)
 }
 
 // 複数記号トークンとなるか確認する
-fn is_mult_symbol(ch: char, next_ch: char) -> bool {
-    let mult_symbols = maltchars_symbol_array!();
-    for mult_symbol in mult_symbols {
-        let mut mult_symbol_chars = mult_symbol.chars();
-        if ch == mult_symbol_chars.next().unwrap() && next_ch == mult_symbol_chars.next().unwrap() {
-            return true;
+fn get_mult_symbol(tokenize_line: &mut TokenizeLine, token_chars: &mut Vec<char>) {
+    let mut current_token = token_chars.iter().collect::<String>();
+    match tokenize_line.peek_nextchar(0) {
+        Some(ch) => {
+            current_token.push(ch);
+        }
+        None => {
+            return;
         }
     }
-    false
+    let mut found_towchars_symbol = false;
+    for symbol in twochars_symbol_array!() {
+        if current_token == symbol {
+            found_towchars_symbol = true;
+            break;
+        }
+    }
+    if !found_towchars_symbol {
+        return;
+    }
+
+    tokenize_line.proceed();
+    token_chars.push(current_token.chars().nth(1).unwrap());
+    match tokenize_line.peek_nextchar(0) {
+        Some(ch) => {
+            current_token.push(ch);
+        }
+        None => {
+            return;
+        }
+    }
+    let mut found_threechars_symbol = false;
+    for symbol in threechars_symbol_array!() {
+        if current_token == symbol {
+            found_threechars_symbol = true;
+            break;
+        }
+    }
+    if !found_threechars_symbol {
+        return;
+    }
+    token_chars.push(current_token.chars().nth(2).unwrap());
+    tokenize_line.proceed();
 }
 
 // 記号トークン作成
 // <<のような複数記号のトークンも作成する(<トークン2つにしない)
-// ただし+=は別のトークンとして扱う
 fn get_symbol(tokenize_line: &mut TokenizeLine, token_chars: &mut Vec<char>) {
-    if tokenize_line.has_char() {
-        let ch = token_chars[0];
-        let next_ch = tokenize_line.peek_char();
-        if is_mult_symbol(ch, next_ch) {
-            token_chars.push(next_ch);
-            tokenize_line.proceed();
-        }
-    }
+    get_mult_symbol(tokenize_line, token_chars);
 }
 
 fn get_quote_text(
