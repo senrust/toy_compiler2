@@ -27,6 +27,7 @@ macro_rules! symbols_without_dot_or_space {
             | ','
             | '!'
             | '~'
+            | '#'
     };
 }
 
@@ -45,7 +46,7 @@ macro_rules! threechars_symbol_array {
     };
 }
 pub enum NumberToken {
-    U32(u32),
+    U64(u64),
     Double(f64),
 }
 
@@ -99,14 +100,14 @@ impl NumberToken {
             radix = 16;
             skipcount = 2;
         }
-        let mut num: u32 = 0;
+        let mut num: u64 = 0;
         for ch in txt.iter().skip(skipcount) {
             match ch.to_digit(radix) {
                 None => return Err(()),
-                Some(digit) => num = num * radix + digit,
+                Some(digit) => num = num * radix as u64 + digit as u64,
             }
         }
-        return Ok(NumberToken::U32(num));
+        return Ok(NumberToken::U64(num));
     }
 }
 
