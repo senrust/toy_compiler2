@@ -1,8 +1,8 @@
 mod interpret_token;
-mod make_ast;
 mod tokenizer;
+mod make_ast;
 
-use interpret_token::make_ast_nodes;
+use interpret_token::make_nodes;
 use tokenizer::tokenize;
 
 static mut SOURCE_TXT: Vec<String> = vec![];
@@ -11,8 +11,8 @@ fn main() {
     for token in &tokens {
         println!("{}", token.token);
     }
-    let ast_nodes = make_ast_nodes(tokens);
-    for node in &ast_nodes {
+    let nodes = make_nodes(tokens);
+    for node in &nodes {
         println!("{:?}", node.kind);
         println!("{:?}", node.info);
     }

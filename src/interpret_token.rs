@@ -107,7 +107,7 @@ fn get_symbol_token_kind(token: String) -> SymbolKind {
 }
 
 #[derive(Debug)]
-pub enum ASTNodeKind {
+pub enum NodeKind {
     Number(NumberKind),
     Symbol(SymbolKind),
     Identifier(String),
@@ -116,51 +116,51 @@ pub enum ASTNodeKind {
 
 #[derive(Debug)]
 
-pub struct ASTNodeInfo {
+pub struct NodeInfo {
     line: usize,
     pos: usize,
     width: usize,
 }
 
-impl ASTNodeInfo {
+impl NodeInfo {
     fn new(line: usize, pos: usize, width: usize) -> Self {
-        ASTNodeInfo { line, pos, width }
+        NodeInfo { line, pos, width }
     }
 }
 
-fn get_node_kind(token: Token) -> (ASTNodeKind, ASTNodeInfo) {
-    let info = ASTNodeInfo::new(token.line, token.pos, token.token.len());
+fn get_node_kind(token: Token) -> (NodeKind, NodeInfo) {
+    let info = NodeInfo::new(token.line, token.pos, token.token.len());
     match token.kind {
         TokenKind::Number(ref num_token) => match num_token {
             NumberToken::U64(num) => {
-                return (ASTNodeKind::Number(NumberKind::U64(*num)), info);
+                return (NodeKind::Number(NumberKind::U64(*num)), info);
             }
             NumberToken::Double(num) => {
-                return (ASTNodeKind::Number(NumberKind::Double(*num)), info);
+                return (NodeKind::Number(NumberKind::Double(*num)), info);
             }
         },
         TokenKind::Identifier => {
-            return (ASTNodeKind::Identifier(token.token), info);
+            return (NodeKind::Identifier(token.token), info);
         }
         TokenKind::QuoteText => {
-            return (ASTNodeKind::RawString(token.token), info);
+            return (NodeKind::RawString(token.token), info);
         }
         TokenKind::Symbol => {
             let symbol_kind = get_symbol_token_kind(token.token);
-            return (ASTNodeKind::Symbol(symbol_kind), info);
+            return (NodeKind::Symbol(symbol_kind), info);
         }
     }
 }
 
-pub struct ASTNode {
-    pub info: ASTNodeInfo,
-    pub kind: ASTNodeKind,
+pub struct Node {
+    pub info: NodeInfo,
+    pub kind: NodeKind,
 }
 
-impl ASTNode {
+impl Node {
     fn new(token: Token) -> Self {
         let (node_kind, node_info) = get_node_kind(token);
-        ASTNode {
+        Node {
             info: node_info,
             kind: node_kind,
         }
@@ -168,7 +168,7 @@ impl ASTNode {
 
     fn expect_symbol(&self, symbol_kind: SymbolKind) -> bool {
         match self.kind {
-            ASTNodeKind::Symbol(ref symbol) => {
+            NodeKind::Symbol(ref symbol) => {
                 return *symbol == symbol_kind;
             }
             _ => {
@@ -179,7 +179,7 @@ impl ASTNode {
 
     fn expect_num(&self) -> bool {
         match self.kind {
-            ASTNodeKind::Number(_) => {
+            NodeKind::Number(_) => {
                 return true;
             }
             _ => {
@@ -190,7 +190,7 @@ impl ASTNode {
 
     fn get_interger(&self) -> Option<u64> {
         match self.kind {
-            ASTNodeKind::Number(ref num) => match num {
+            NodeKind::Number(ref num) => match num {
                 NumberKind::U64(integer) => {
                     return Some(*integer);
                 }
@@ -206,7 +206,7 @@ impl ASTNode {
 
     fn get_float(&self) -> Option<f64> {
         match self.kind {
-            ASTNodeKind::Number(ref num) => match num {
+            NodeKind::Number(ref num) => match num {
                 NumberKind::U64(_integer) => {
                     return None;
                 }
@@ -222,7 +222,7 @@ impl ASTNode {
 
     fn expect_identifier(&self) -> bool {
         match self.kind {
-            ASTNodeKind::Identifier(_) => {
+            NodeKind::Identifier(_) => {
                 return true;
             }
             _ => {
@@ -233,7 +233,7 @@ impl ASTNode {
 
     fn get_identifier(&self) -> Option<&String> {
         match self.kind {
-            ASTNodeKind::Identifier(ref identifier) => {
+            NodeKind::Identifier(ref identifier) => {
                 return Some(identifier);
             }
             _ => {
@@ -244,7 +244,7 @@ impl ASTNode {
 
     fn expect_rawstring(&self) -> bool {
         match self.kind {
-            ASTNodeKind::RawString(_) => {
+            NodeKind::RawString(_) => {
                 return true;
             }
             _ => {
@@ -255,7 +255,7 @@ impl ASTNode {
 
     fn get_rawstring(&self) -> Option<&String> {
         match self.kind {
-            ASTNodeKind::RawString(ref rawstring) => {
+            NodeKind::RawString(ref rawstring) => {
                 return Some(rawstring);
             }
             _ => {
@@ -265,11 +265,11 @@ impl ASTNode {
     }
 }
 
-pub fn make_ast_nodes(tokens: Vec<Token>) -> Vec<ASTNode> {
-    let mut ast_nodes: Vec<ASTNode> = vec![];
+pub fn make_nodes(tokens: Vec<Token>) -> Vec<Node> {
+    let mut nodes: Vec<Node> = vec![];
     for token in tokens {
-        let node = ASTNode::new(token);
-        ast_nodes.push(node);
+        let node = Node::new(token);
+        nodes.push(node);
     }
-    ast_nodes
+    nodes
 }
