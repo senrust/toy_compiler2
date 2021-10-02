@@ -1,4 +1,7 @@
+use std::fmt;
 use crate::tokenizer::{Token, TokenKind};
+use crate::definition::number::{string_to_number, Number};
+use crate::definition::types::Types;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SymbolKind {
@@ -109,10 +112,9 @@ pub enum NodeKind {
 }
 
 #[derive(Debug)]
-
 pub struct NodeInfo {
-    line: usize,
-    pos: usize,
+    pub line: usize,
+    pub pos: usize,
     width: usize,
 }
 
@@ -155,10 +157,10 @@ impl Node {
         }
     }
 
-    pub fn expect_symbol(&self, symbol_kind: SymbolKind) -> bool {
+    pub fn expect_symbol(&self, symbol_kind: &SymbolKind) -> bool {
         match self.kind {
             NodeKind::Symbol(ref symbol) => {
-                return *symbol == symbol_kind;
+                return *symbol == *symbol_kind;
             }
             _ => {
                 return false;
@@ -177,7 +179,22 @@ impl Node {
         }
     }
 
-    fn expect_identifier(&self) -> bool {
+    pub fn get_interger(&self) -> Result<Number, ()> {
+        match self.kind {
+            NodeKind::Number(ref num_txt) => {
+                if let Ok(num) = string_to_number(num_txt) {
+                    return Ok(num);
+                } else {
+                    return Err(());
+                } 
+            }
+            _ => {
+                return Err(());
+            }
+        }
+    }
+
+    pub fn expect_identifier(&self) -> bool {
         match self.kind {
             NodeKind::Identifier(_) => {
                 return true;
@@ -188,18 +205,18 @@ impl Node {
         }
     }
 
-    fn get_identifier(&self) -> Option<&String> {
+    pub fn get_identifier(&self) -> Result<&String, ()> {
         match self.kind {
             NodeKind::Identifier(ref identifier) => {
-                return Some(identifier);
+                return Ok(identifier);
             }
             _ => {
-                return None;
+                return Err(());
             }
         }
     }
 
-    fn expect_rawstring(&self) -> bool {
+    pub fn expect_rawstring(&self) -> bool {
         match self.kind {
             NodeKind::RawString(_) => {
                 return true;
@@ -210,13 +227,31 @@ impl Node {
         }
     }
 
-    fn get_rawstring(&self) -> Option<&String> {
+    pub fn get_rawstring(&self) -> Option<&String> {
         match self.kind {
             NodeKind::RawString(ref rawstring) => {
                 return Some(rawstring);
             }
             _ => {
                 return None;
+            }
+        }
+    }
+}
+
+pub enum NodeError {
+    NotValueError,
+    UnexpectNodeError,
+}
+
+impl fmt::Display for NodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            NodeError::NotValueError => {
+                write!(f, "value is expected")
+            }
+            NodeError::UnexpectNodeError => {
+                write!(f, "unexpected token")
             }
         }
     }

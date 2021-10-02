@@ -1,6 +1,6 @@
 pub enum Number{
     U64(u64),
-    Double(f64),
+    F64(f64),
 }
 
 pub fn string_to_number(string: &String) -> Result<Number, ()> {
@@ -46,7 +46,7 @@ pub fn string_to_number(string: &String) -> Result<Number, ()> {
                 }
             }
         }
-        Ok(Number::Double(num))
+        Ok(Number::F64(num))
     } else {
         let mut radix = 10;
         let mut skipcount = 0;

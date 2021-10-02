@@ -2,9 +2,9 @@ use std::fmt;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::process::exit;
 
 use crate::SOURCE_TXT;
+use crate::error::tokenizer_error;
 
 macro_rules! symbols_without_dot_or_space {
     () => {
@@ -87,21 +87,7 @@ impl Token {
     }
 }
 
-// トークン化に失敗した行とそのトークンを表示して終了する
-fn tokenizer_panic(err: TokenizeError, info: &TokenizeInfo) -> ! {
-    let error_line;
-    unsafe {
-        error_line = &SOURCE_TXT[info.line];
-    }
-    eprintln!("{}", error_line);
-    let mut error_cur = " ".repeat(info.pos);
-    error_cur.push_str("^");
-    eprintln!("{}", error_cur);
-    eprintln!("line{}, pos{}, error: {}", info.line + 1, info.pos + 1, err);
-    exit(-1);
-}
-
-enum TokenizeError {
+pub enum TokenizeError {
     InvalidIdentifiler(String),
     UnClosedError,
 }
@@ -120,7 +106,7 @@ impl Display for TokenizeError {
 }
 
 #[derive(PartialEq, Eq)]
-enum TokenState {
+pub enum TokenState {
     Empty,
     Comment,
     LineComment,
@@ -130,10 +116,10 @@ enum TokenState {
     Symbol,
 }
 
-struct TokenizeInfo {
-    state: TokenState,
-    line: usize,
-    pos: usize,
+pub struct TokenizeInfo {
+    pub state: TokenState,
+    pub line: usize,
+    pub pos: usize,
 }
 
 impl TokenizeInfo {
@@ -404,7 +390,7 @@ pub fn tokenize(filepath: &str) -> Vec<Token> {
                         }
                         Err(()) => {
                             let err_token = token_chars.iter().collect::<String>();
-                            tokenizer_panic(
+                            tokenizer_error(
                                 TokenizeError::InvalidIdentifiler(err_token),
                                 &tokenize_state,
                             );
@@ -428,7 +414,7 @@ pub fn tokenize(filepath: &str) -> Vec<Token> {
                     }
                     Err(()) => {
                         let err_token = token_chars.iter().collect::<String>();
-                        tokenizer_panic(
+                        tokenizer_error(
                             TokenizeError::InvalidIdentifiler(err_token),
                             &tokenize_state,
                         );
@@ -445,7 +431,7 @@ pub fn tokenize(filepath: &str) -> Vec<Token> {
                             }
                         }
                         Err(()) => {
-                            tokenizer_panic(TokenizeError::UnClosedError, &tokenize_state);
+                            tokenizer_error(TokenizeError::UnClosedError, &tokenize_state);
                         }
                     }
                 }
@@ -465,7 +451,7 @@ pub fn tokenize(filepath: &str) -> Vec<Token> {
                         }
                         Err(()) => {
                             let err_token = token_chars.iter().collect::<String>();
-                            tokenizer_panic(
+                            tokenizer_error(
                                 TokenizeError::InvalidIdentifiler(err_token),
                                 &tokenize_state,
                             );
@@ -502,7 +488,7 @@ pub fn tokenize(filepath: &str) -> Vec<Token> {
 
     // ファイル端で未トークン化があればエラーとする
     if tokenize_state.state != TokenState::Empty {
-        tokenizer_panic(TokenizeError::UnClosedError, &tokenize_state);
+        tokenizer_error(TokenizeError::UnClosedError, &tokenize_state);
     }
     tokens
 }

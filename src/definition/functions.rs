@@ -8,6 +8,14 @@ pub struct Function {
     ret: Rc<Type>,
 }
 
-struct Functions {
+pub struct Functions {
     dict: HashMap<String, Function>,
+}
+
+impl Functions {
+    pub fn new() -> Self {
+        Functions {
+            dict: HashMap::new(),
+        }
+    }   
 }

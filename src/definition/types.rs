@@ -1,5 +1,7 @@
-use std::{collections::HashMap, primitive, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 use super::functions::Function;
+use crate::definition::number::Number;
+use crate::make_ast::AST;
 
 pub struct TypeMember {
     offset: usize,
@@ -48,7 +50,7 @@ pub struct Types {
 }
 
 impl Types {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let mut types = Types { dict: HashMap::new() };
         let type_void = Type::new_primitive(PrimitiveType::Void, 0);
         types.dict.insert("void".to_string(), Rc::new(type_void));
@@ -78,4 +80,19 @@ impl Types {
 
         types
     }
+
+    pub fn get_iimidiate_type(&self, num_type: &Number) -> Rc<Type> {
+        match num_type {
+            Number::U64(_) => {
+                self.dict["long"].clone()
+            }
+            Number::F64(_) => {
+                self.dict["double"].clone()
+            }
+        }
+    }
+}
+
+pub fn evaluate_binary_operation_type(left: &AST, right: &AST) -> Rc<Type> {
+    left.type_.clone()
 }
