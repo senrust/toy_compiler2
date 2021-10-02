@@ -1,10 +1,4 @@
-use crate::tokenizer::{NumberToken, Token, TokenKind};
-
-#[derive(Debug)]
-pub enum NumberKind {
-    U64(u64),
-    Double(f64),
-}
+use crate::tokenizer::{Token, TokenKind};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SymbolKind {
@@ -108,7 +102,7 @@ fn get_symbol_token_kind(token: String) -> SymbolKind {
 
 #[derive(Debug)]
 pub enum NodeKind {
-    Number(NumberKind),
+    Number(String),
     Symbol(SymbolKind),
     Identifier(String),
     RawString(String),
@@ -131,13 +125,8 @@ impl NodeInfo {
 fn get_node_kind(token: Token) -> (NodeKind, NodeInfo) {
     let info = NodeInfo::new(token.line, token.pos, token.token.len());
     match token.kind {
-        TokenKind::Number(ref num_token) => match num_token {
-            NumberToken::U64(num) => {
-                return (NodeKind::Number(NumberKind::U64(*num)), info);
-            }
-            NumberToken::Double(num) => {
-                return (NodeKind::Number(NumberKind::Double(*num)), info);
-            }
+        TokenKind::Number => {
+            return (NodeKind::Number(token.token), info);
         },
         TokenKind::Identifier => {
             return (NodeKind::Identifier(token.token), info);
@@ -166,7 +155,7 @@ impl Node {
         }
     }
 
-    fn expect_symbol(&self, symbol_kind: SymbolKind) -> bool {
+    pub fn expect_symbol(&self, symbol_kind: SymbolKind) -> bool {
         match self.kind {
             NodeKind::Symbol(ref symbol) => {
                 return *symbol == symbol_kind;
@@ -177,45 +166,13 @@ impl Node {
         }
     }
 
-    fn expect_num(&self) -> bool {
+    pub fn expect_number(&self) -> bool {
         match self.kind {
             NodeKind::Number(_) => {
                 return true;
             }
             _ => {
                 return false;
-            }
-        }
-    }
-
-    fn get_interger(&self) -> Option<u64> {
-        match self.kind {
-            NodeKind::Number(ref num) => match num {
-                NumberKind::U64(integer) => {
-                    return Some(*integer);
-                }
-                NumberKind::Double(_float) => {
-                    return None;
-                }
-            },
-            _ => {
-                return None;
-            }
-        }
-    }
-
-    fn get_float(&self) -> Option<f64> {
-        match self.kind {
-            NodeKind::Number(ref num) => match num {
-                NumberKind::U64(_integer) => {
-                    return None;
-                }
-                NumberKind::Double(float) => {
-                    return Some(*float);
-                }
-            },
-            _ => {
-                return None;
             }
         }
     }

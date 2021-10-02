@@ -45,77 +45,12 @@ macro_rules! threechars_symbol_array {
         ["<<=", ">>="]
     };
 }
-pub enum NumberToken {
-    U64(u64),
-    Double(f64),
-}
-
-impl NumberToken {
-    fn new(txt: &Vec<char>) -> Result<Self, ()> {
-        let mut ishex = false;
-        let mut isdouble = false;
-        if txt.len() > 2 {
-            if txt[0] == '0' && (txt[1] == 'x' || txt[1] == 'X') {
-                ishex = true;
-            }
-        }
-        if !ishex {
-            for ch in txt {
-                if *ch == '.' {
-                    if isdouble {
-                        return Err(());
-                    } else {
-                        isdouble = true;
-                    }
-                }
-            }
-        }
-        if isdouble {
-            let mut num: f64 = 0.0;
-            let mut order: i32 = 0;
-            for ch in txt {
-                if *ch == '.' {
-                    order = -1;
-                } else {
-                    match ch.to_digit(10) {
-                        None => return Err(()),
-                        Some(digit) => {
-                            if order >= 0 {
-                                num = num * 10.0 + digit as f64;
-                                order += 1;
-                            } else {
-                                num = num + digit as f64 * 10f64.powi(order as i32);
-                                order -= 1;
-                            }
-                        }
-                    }
-                }
-            }
-            return Ok(NumberToken::Double(num));
-        }
-
-        let mut radix = 10;
-        let mut skipcount = 0;
-        if ishex {
-            radix = 16;
-            skipcount = 2;
-        }
-        let mut num: u64 = 0;
-        for ch in txt.iter().skip(skipcount) {
-            match ch.to_digit(radix) {
-                None => return Err(()),
-                Some(digit) => num = num * radix as u64 + digit as u64,
-            }
-        }
-        return Ok(NumberToken::U64(num));
-    }
-}
 
 // トークン種別
 // ただしNumberは妥当な数字の文字列かチェックしていない
 pub enum TokenKind {
     Identifier,
-    Number(NumberToken),
+    Number,
     Symbol,
     QuoteText,
 }
@@ -143,16 +78,11 @@ impl Token {
 
     fn new_number_token(token: &Vec<char>, info: &TokenizeInfo) -> Token {
         let token_string: String = token.iter().collect();
-        if let Ok(number_kind) = NumberToken::new(token) {
-            return Token {
-                token: token_string,
-                kind: TokenKind::Number(number_kind),
-                line: info.line,
-                pos: info.pos,
-            };
-        } else {
-            let err = TokenizeError::InvalidNumber(token_string);
-            tokenizer_panic(err, info);
+        Token {
+            token: token_string,
+            kind: TokenKind::Number,
+            line: info.line,
+            pos: info.pos,
         }
     }
 }
@@ -173,7 +103,6 @@ fn tokenizer_panic(err: TokenizeError, info: &TokenizeInfo) -> ! {
 
 enum TokenizeError {
     InvalidIdentifiler(String),
-    InvalidNumber(String),
     UnClosedError,
 }
 
@@ -182,9 +111,6 @@ impl Display for TokenizeError {
         match self {
             TokenizeError::InvalidIdentifiler(identifier) => {
                 write!(f, "{} is invalid identifier", identifier)
-            }
-            TokenizeError::InvalidNumber(number) => {
-                write!(f, "{} is invalid number", number)
             }
             TokenizeError::UnClosedError => {
                 write!(f, "not closed")

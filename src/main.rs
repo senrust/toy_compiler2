@@ -1,6 +1,7 @@
 mod interpret_token;
 mod tokenizer;
 mod make_ast;
+mod definition;
 
 use interpret_token::make_nodes;
 use tokenizer::tokenize;
