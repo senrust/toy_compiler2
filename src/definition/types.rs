@@ -1,6 +1,6 @@
 use super::functions::Function;
 use crate::definition::number::Number;
-use crate::make_ast::AST;
+use crate::ast_maker::AST;
 use std::{collections::HashMap, rc::Rc};
 
 pub struct SturctMember {

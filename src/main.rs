@@ -1,12 +1,12 @@
 mod definition;
 mod error;
-mod interpret_token;
-mod make_ast;
+mod token_interpreter;
+mod ast_maker;
 mod tokenizer;
 
 use std::env;
-use interpret_token::make_nodes;
-use make_ast::make_asts;
+use token_interpreter::make_nodes;
+use ast_maker::make_asts;
 use tokenizer::tokenize;
 
 static mut SOURCE_TXT: Vec<String> = vec![];

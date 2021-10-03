@@ -3,7 +3,7 @@ use crate::definition::number::Number;
 use crate::definition::{types::*};
 use crate::definition::variables::{Variable, Variables};
 use crate::error::*;
-use crate::interpret_token::{Node, SymbolKind};
+use crate::token_interpreter::{Node, SymbolKind};
 use std::rc::Rc;
 
 struct Nodes {
