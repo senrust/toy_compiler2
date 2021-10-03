@@ -1,5 +1,5 @@
-use std::{collections::HashMap, rc::Rc};
 use crate::definition::types::Type;
+use std::{collections::HashMap, rc::Rc};
 
 pub struct Variable {
     name: String,
@@ -12,7 +12,6 @@ pub struct VariableFrame {
     offset: usize,
     size: usize,
     variables: HashMap<String, Variable>,
-
 }
 
 pub struct Variables {

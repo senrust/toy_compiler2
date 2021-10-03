@@ -3,8 +3,8 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use crate::SOURCE_TXT;
 use crate::error::tokenizer_error;
+use crate::SOURCE_TXT;
 
 macro_rules! symbols_without_dot_or_space {
     () => {

@@ -25,17 +25,17 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'compiler'",
+            "name": "Debug integration test 'test'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=compiler",
+                    "--test=test",
                     "--package=compiler"
                 ],
                 "filter": {
-                    "name": "compiler",
-                    "kind": "bin"
+                    "name": "test",
+                    "kind": "test"
                 }
             },
             "args": [],

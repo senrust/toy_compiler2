@@ -1,10 +1,10 @@
-use std::rc::Rc;
-use crate::definition::types::*;
-use crate::definition::variables::{Variable, Variables};
-use crate::definition::functions::{Function, Functions};
+use crate::definition::functions::{Functions};
 use crate::definition::number::Number;
+use crate::definition::{types::*};
+use crate::definition::variables::{Variable, Variables};
 use crate::error::*;
-use crate::interpret_token::{Node, NodeError, SymbolKind};
+use crate::interpret_token::{Node, SymbolKind};
+use std::rc::Rc;
 
 struct Nodes {
     vec: Vec<Node>,
@@ -44,8 +44,8 @@ impl Nodes {
             if let Some(node) = self.vec.get(self.cur) {
                 if node.expect_symbol(symbol_kind) {
                     return true;
-                } 
-            } 
+                }
+            }
         }
         false
     }
@@ -65,7 +65,7 @@ impl Nodes {
 
     fn expect_number(&self) -> bool {
         if let Some(node) = self.vec.get(self.cur) {
-            node.expect_number() 
+            node.expect_number()
         } else {
             false
         }
@@ -85,13 +85,13 @@ impl Nodes {
     }
 }
 
-enum OperationKind {
+pub enum OperationKind {
     Add,
     Sub,
     Mul,
     Div,
     Rem,
-    Assign,  
+    Assign,
 }
 
 pub enum ASTKind {
@@ -114,25 +114,62 @@ pub struct AST {
 
 impl AST {
     fn new_integer_ast(num: u64, type_: Rc<Type>) -> AST {
-        AST { kind: ASTKind::ImmidiateInterger(type_.clone(), num), type_, left: None, right: None, child: None, other: None }
+        AST {
+            kind: ASTKind::ImmidiateInterger(type_.clone(), num),
+            type_,
+            left: None,
+            right: None,
+            child: None,
+            other: None,
+        }
     }
 
-    fn new_binary_operation_ast(operation: OperationKind, type_: Rc<Type>, left: AST, right: AST) -> AST {
-        AST { kind: ASTKind::Operation(operation), type_, left: Some(Box::new(left)), right: Some(Box::new(right)), child: None, other: None }
+    fn new_binary_operation_ast(
+        operation: OperationKind,
+        type_: Rc<Type>,
+        left: AST,
+        right: AST,
+    ) -> AST {
+        AST {
+            kind: ASTKind::Operation(operation),
+            type_,
+            left: Some(Box::new(left)),
+            right: Some(Box::new(right)),
+            child: None,
+            other: None,
+        }
     }
 }
 
-fn ast_number(nodes: &mut Nodes, types: &mut Types, variables: &mut Variables, functions: &mut Functions) -> Result<AST, ()> {
+struct ProgramInfo {
+    types: Types,
+    variables: Variables,
+    functions: Functions,
+} 
+
+impl ProgramInfo {
+    fn new(types: Types, variables: Variables, functions: Functions) -> Self {
+        Self {
+            types,
+            variables,
+            functions,
+        }
+    }
+
+    fn get_imidiate_type(&self, num: &Number) -> Rc<Type> {
+        self.types.get_imidiate_type(&num)
+    }
+}
+
+fn ast_number(nodes: &mut Nodes, programinfo: &mut ProgramInfo) -> Result<AST, ()> {
     if nodes.expect_number() {
-        if let  Ok(num) = nodes.consume_integer() {
-            let type_ =types.get_iimidiate_type(&num);
+        if let Ok(num) = nodes.consume_integer() {
+            let type_ = programinfo.get_imidiate_type(&num);
             match num {
                 Number::U64(num_u64) => {
                     return Ok(AST::new_integer_ast(num_u64, type_));
                 }
-                Number::F64(num_f64) => {
-                    Err(())
-                }
+                Number::F64(num_f64) => Err(()),
             }
         } else {
             Err(())
@@ -143,23 +180,24 @@ fn ast_number(nodes: &mut Nodes, types: &mut Types, variables: &mut Variables, f
 }
 
 // add = num | (+  num| - num)*
-fn ast_add(nodes: &mut Nodes, types: &mut Types, variables: &mut Variables, functions: &mut Functions) -> Result<AST, ()> {
-    if let Ok(left_number_ast) = ast_number(nodes, types, variables, functions) {
+fn ast_add(nodes: &mut Nodes, programinfo: &mut ProgramInfo) -> Result<AST, ()> {
+    if let Ok(left_number_ast) = ast_number(nodes, programinfo) {
         let mut operation_kind;
         let mut add_ast = left_number_ast;
         loop {
-            if nodes.consume_symbol(SymbolKind::Add) { 
-                operation_kind = OperationKind::Add; 
+            if nodes.consume_symbol(SymbolKind::Add) {
+                operation_kind = OperationKind::Add;
             } else if nodes.consume_symbol(SymbolKind::Sub) {
-                operation_kind = OperationKind::Sub; 
+                operation_kind = OperationKind::Sub;
             } else if nodes.is_empty() {
-                return  Ok(add_ast);
+                return Ok(add_ast);
             } else {
                 unexpected_node_err(&nodes.get().unwrap().info);
             }
-            if let Ok(right_number_ast) = ast_number(nodes, types, variables, functions) {
+            if let Ok(right_number_ast) = ast_number(nodes, programinfo) {
                 let type_: Rc<Type> = evaluate_binary_operation_type(&add_ast, &right_number_ast);
-                add_ast = AST::new_binary_operation_ast(operation_kind,  type_, add_ast, right_number_ast);
+                add_ast =
+                    AST::new_binary_operation_ast(operation_kind, type_, add_ast, right_number_ast);
             } else {
                 if nodes.is_empty() {
                     unexpected_end_err(&nodes.get_last().unwrap().info);
@@ -173,14 +211,15 @@ fn ast_add(nodes: &mut Nodes, types: &mut Types, variables: &mut Variables, func
     }
 }
 
-pub fn make_asts(node_vec: Vec<Node>) -> Vec<AST>{
+pub fn make_asts(node_vec: Vec<Node>) -> Vec<AST> {
     let mut nodes = Nodes::new(node_vec);
     let mut asts: Vec<AST> = vec![];
-    let mut types = Types::new();
-    let mut variables = Variables::new();
-    let mut functions = Functions::new();
+    let types = Types::new();
+    let variables = Variables::new();
+    let functions = Functions::new();
+    let mut programinfo = ProgramInfo::new(types, variables, functions);
     while nodes.has_node() {
-        let ast = ast_add(&mut nodes, &mut types, &mut variables, &mut functions).unwrap();
+        let ast = ast_add(&mut nodes, &mut programinfo).unwrap();
         asts.push(ast);
     }
     asts

@@ -1,4 +1,4 @@
-pub enum Number{
+pub enum Number {
     U64(u64),
     F64(f64),
 }
@@ -16,7 +16,6 @@ pub fn string_to_number(string: &String) -> Result<Number, ()> {
         for ch in &chars {
             if *ch == '.' {
                 if isdouble {
-            
                     return Err(());
                 } else {
                     isdouble = true;

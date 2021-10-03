@@ -1,12 +1,12 @@
-use std::{collections::HashMap, rc::Rc};
 use super::functions::Function;
 use crate::definition::number::Number;
 use crate::make_ast::AST;
+use std::{collections::HashMap, rc::Rc};
 
 pub struct TypeMember {
     offset: usize,
     name: String,
-    type_: Rc<Type>, 
+    type_: Rc<Type>,
 }
 
 enum PrimitiveType {
@@ -43,6 +43,10 @@ impl Type {
             function: None,
         }
     }
+    
+    fn is_pointer(&self) -> bool {
+        self.pointer.is_some()
+    }
 }
 
 pub struct Types {
@@ -51,19 +55,29 @@ pub struct Types {
 
 impl Types {
     pub fn new() -> Self {
-        let mut types = Types { dict: HashMap::new() };
+        let mut types = Types {
+            dict: HashMap::new(),
+        };
         let type_void = Type::new_primitive(PrimitiveType::Void, 0);
         types.dict.insert("void".to_string(), Rc::new(type_void));
 
         let type_u8 = Type::new_primitive(PrimitiveType::U8, 1);
-        types.dict.insert("unsigned char".to_string(), Rc::new(type_u8));
+        types
+            .dict
+            .insert("unsigned char".to_string(), Rc::new(type_u8));
         let type_u16 = Type::new_primitive(PrimitiveType::U16, 2);
-        types.dict.insert("unsigned short".to_string(), Rc::new(type_u16));
+        types
+            .dict
+            .insert("unsigned short".to_string(), Rc::new(type_u16));
         let type_u32 = Type::new_primitive(PrimitiveType::U32, 4);
-        types.dict.insert("unsigned int".to_string(), Rc::new(type_u32));
+        types
+            .dict
+            .insert("unsigned int".to_string(), Rc::new(type_u32));
         let type_u64 = Type::new_primitive(PrimitiveType::U64, 8);
-        types.dict.insert("unsigned long".to_string(), Rc::new(type_u64));
-        
+        types
+            .dict
+            .insert("unsigned long".to_string(), Rc::new(type_u64));
+
         let type_i8 = Type::new_primitive(PrimitiveType::I8, 1);
         types.dict.insert("char".to_string(), Rc::new(type_i8));
         let type_i16 = Type::new_primitive(PrimitiveType::I16, 2);
@@ -81,14 +95,10 @@ impl Types {
         types
     }
 
-    pub fn get_iimidiate_type(&self, num_type: &Number) -> Rc<Type> {
+    pub fn get_imidiate_type(&self, num_type: &Number) -> Rc<Type> {
         match num_type {
-            Number::U64(_) => {
-                self.dict["long"].clone()
-            }
-            Number::F64(_) => {
-                self.dict["double"].clone()
-            }
+            Number::U64(_) => self.dict["long"].clone(),
+            Number::F64(_) => self.dict["double"].clone(),
         }
     }
 }

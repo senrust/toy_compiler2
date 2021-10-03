@@ -1,6 +1,5 @@
-
-use std::{collections::HashMap, rc::Rc};
 use super::types::Type;
+use std::{collections::HashMap, rc::Rc};
 
 pub struct Function {
     size: usize,
@@ -17,5 +16,5 @@ impl Functions {
         Functions {
             dict: HashMap::new(),
         }
-    }   
+    }
 }

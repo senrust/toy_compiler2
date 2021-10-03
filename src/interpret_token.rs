@@ -1,7 +1,7 @@
-use std::fmt;
-use crate::tokenizer::{Token, TokenKind};
 use crate::definition::number::{string_to_number, Number};
 use crate::definition::types::Types;
+use crate::tokenizer::{Token, TokenKind};
+use std::fmt;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SymbolKind {
@@ -129,7 +129,7 @@ fn get_node_kind(token: Token) -> (NodeKind, NodeInfo) {
     match token.kind {
         TokenKind::Number => {
             return (NodeKind::Number(token.token), info);
-        },
+        }
         TokenKind::Identifier => {
             return (NodeKind::Identifier(token.token), info);
         }
@@ -186,7 +186,7 @@ impl Node {
                     return Ok(num);
                 } else {
                     return Err(());
-                } 
+                }
             }
             _ => {
                 return Err(());

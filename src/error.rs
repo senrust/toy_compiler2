@@ -37,7 +37,7 @@ pub fn unexpected_node_err(info: &NodeInfo) -> ! {
 }
 
 pub fn unexpected_end_err(last_info: &NodeInfo) -> ! {
-    let last_info = NodeInfo::new(last_info.line, last_info.pos + last_info.width, 0,);
+    let last_info = NodeInfo::new(last_info.line, last_info.pos + last_info.width, 0);
     print_error_info(NodeError::UnexpectEndError, &last_info);
     exit(-1);
 }
