@@ -19,7 +19,7 @@ pub fn tokenizer_error(err: TokenizeError, info: &TokenizeInfo) -> ! {
     exit(-1);
 }
 
-pub fn unexpected_node_err(err: NodeError, info: &NodeInfo) -> ! {
+fn print_error_info(err: NodeError, info: &NodeInfo) {
     let error_line;
     unsafe {
         error_line = &SOURCE_TXT[info.line];
@@ -29,5 +29,15 @@ pub fn unexpected_node_err(err: NodeError, info: &NodeInfo) -> ! {
     error_cur.push_str("^");
     eprintln!("{}", error_cur);
     eprintln!("line{}, pos{}, error: {}", info.line + 1, info.pos + 1, err);
-    return exit(-1);
+}
+
+pub fn unexpected_node_err(info: &NodeInfo) -> ! {
+    print_error_info(NodeError::UnexpectNodeError, info);
+    exit(-1);
+}
+
+pub fn unexpected_end_err(last_info: &NodeInfo) -> ! {
+    let last_info = NodeInfo::new(last_info.line, last_info.pos + last_info.width, 0,);
+    print_error_info(NodeError::UnexpectEndError, &last_info);
+    exit(-1);
 }

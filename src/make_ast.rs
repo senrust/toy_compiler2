@@ -3,7 +3,7 @@ use crate::definition::types::*;
 use crate::definition::variables::{Variable, Variables};
 use crate::definition::functions::{Function, Functions};
 use crate::definition::number::Number;
-use crate::error::unexpected_node_err;
+use crate::error::*;
 use crate::interpret_token::{Node, NodeError, SymbolKind};
 
 struct Nodes {
@@ -19,12 +19,20 @@ impl Nodes {
         }
     }
 
-    fn get(&self) -> &Node {
-        &self.vec[self.cur]
+    fn get(&self) -> Option<&Node> {
+        self.vec.get(self.cur)
+    }
+
+    fn get_last(&self) -> Option<&Node> {
+        self.vec.last()
     }
 
     fn proceed(&mut self) {
         self.cur += 1;
+    }
+
+    fn is_empty(&self) -> bool {
+        self.cur >= self.vec.len()
     }
 
     fn has_node(&self) -> bool {
@@ -33,35 +41,46 @@ impl Nodes {
 
     fn expect_symbols(&mut self, symbol_kinds: &[SymbolKind]) -> bool {
         for symbol_kind in symbol_kinds {
-            if self.vec[self.cur].expect_symbol(symbol_kind) {
-                return true;    
+            if let Some(node) = self.vec.get(self.cur) {
+                if node.expect_symbol(symbol_kind) {
+                    return true;
+                } 
             } 
         }
         false
     }
 
     fn consume_symbol(&mut self, symbol_kind: SymbolKind) -> bool {
-        if self.vec[self.cur].expect_symbol(&symbol_kind) {
-            self.proceed();
-            true    
+        if let Some(node) = self.vec.get(self.cur) {
+            if node.expect_symbol(&symbol_kind) {
+                self.cur += 1;
+                true
+            } else {
+                false
+            }
         } else {
             false
         }
     }
 
     fn expect_number(&self) -> bool {
-        self.vec[self.cur].expect_number()
+        if let Some(node) = self.vec.get(self.cur) {
+            node.expect_number() 
+        } else {
+            false
+        }
     }
 
     fn consume_integer(&mut self) -> Result<Number, ()> {
-        match self.vec[self.cur].get_interger() {
-            Ok(num) => {
+        if let Some(node) = self.vec.get(self.cur) {
+            if let Ok(num) = node.get_interger() {
                 self.cur += 1;
                 Ok(num)
-            }
-            Err(()) => {
+            } else {
                 Err(())
             }
+        } else {
+            Err(())
         }
     }
 }
@@ -123,25 +142,34 @@ fn ast_number(nodes: &mut Nodes, types: &mut Types, variables: &mut Variables, f
     }
 }
 
-fn ast_add(nodes: &mut Nodes, types: &mut Types, variables: &mut Variables, functions: &mut Functions) -> AST {
+// add = num | (+  num| - num)*
+fn ast_add(nodes: &mut Nodes, types: &mut Types, variables: &mut Variables, functions: &mut Functions) -> Result<AST, ()> {
     if let Ok(left_number_ast) = ast_number(nodes, types, variables, functions) {
-        let operation_kind; 
-        if nodes.consume_symbol(SymbolKind::Add) { 
-            operation_kind = OperationKind::Add; 
-        } else if nodes.consume_symbol(SymbolKind::Sub) {
-            operation_kind = OperationKind::Sub; 
-        } else {
-            unexpected_node_err(NodeError::UnexpectNodeError, &nodes.get().info);
-        }
-        if let Ok(right_number_ast) = ast_number(nodes, types, variables, functions) {
-            let type_: Rc<Type> = evaluate_binary_operation_type(&left_number_ast, &right_number_ast);
-            return AST::new_binary_operation_ast(operation_kind,  type_, left_number_ast, right_number_ast);
-
-        } else {
-            unexpected_node_err(NodeError::NotValueError, &nodes.get().info);
+        let mut operation_kind;
+        let mut add_ast = left_number_ast;
+        loop {
+            if nodes.consume_symbol(SymbolKind::Add) { 
+                operation_kind = OperationKind::Add; 
+            } else if nodes.consume_symbol(SymbolKind::Sub) {
+                operation_kind = OperationKind::Sub; 
+            } else if nodes.is_empty() {
+                return  Ok(add_ast);
+            } else {
+                unexpected_node_err(&nodes.get().unwrap().info);
+            }
+            if let Ok(right_number_ast) = ast_number(nodes, types, variables, functions) {
+                let type_: Rc<Type> = evaluate_binary_operation_type(&add_ast, &right_number_ast);
+                add_ast = AST::new_binary_operation_ast(operation_kind,  type_, add_ast, right_number_ast);
+            } else {
+                if nodes.is_empty() {
+                    unexpected_end_err(&nodes.get_last().unwrap().info);
+                } else {
+                    unexpected_node_err(&nodes.get().unwrap().info);
+                }
+            }
         }
     } else {
-        unexpected_node_err(NodeError::NotValueError, &nodes.get().info);
+        unexpected_node_err(&nodes.get().unwrap().info);
     }
 }
 
@@ -152,7 +180,7 @@ pub fn make_asts(node_vec: Vec<Node>) -> Vec<AST>{
     let mut variables = Variables::new();
     let mut functions = Functions::new();
     while nodes.has_node() {
-        let ast = ast_add(&mut nodes, &mut types, &mut variables, &mut functions);
+        let ast = ast_add(&mut nodes, &mut types, &mut variables, &mut functions).unwrap();
         asts.push(ast);
     }
     asts

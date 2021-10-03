@@ -115,11 +115,11 @@ pub enum NodeKind {
 pub struct NodeInfo {
     pub line: usize,
     pub pos: usize,
-    width: usize,
+    pub width: usize,
 }
 
 impl NodeInfo {
-    fn new(line: usize, pos: usize, width: usize) -> Self {
+    pub fn new(line: usize, pos: usize, width: usize) -> Self {
         NodeInfo { line, pos, width }
     }
 }
@@ -242,6 +242,7 @@ impl Node {
 pub enum NodeError {
     NotValueError,
     UnexpectNodeError,
+    UnexpectEndError,
 }
 
 impl fmt::Display for NodeError {
@@ -252,6 +253,9 @@ impl fmt::Display for NodeError {
             }
             NodeError::UnexpectNodeError => {
                 write!(f, "unexpected token")
+            }
+            NodeError::UnexpectEndError => {
+                write!(f, "unexpected end")
             }
         }
     }
