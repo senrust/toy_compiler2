@@ -13,8 +13,8 @@ pub struct BlockVariable {
 
 pub struct Variables {
     global: HashMap<String, Variable>,
-    local_block: HashMap<String, usize>,
-    local_block_vec: Vec<BlockVariable>,
+    local: HashMap<String, Variable>,
+    local_block: Vec<Vec<String>>,
     local_frame_size: usize,
 }
 
@@ -22,8 +22,8 @@ impl Variables {
     pub fn new() -> Self {
         Variables {
             global: HashMap::new(),
-            local_block: HashMap::new(),
-            local_block_vec: vec![],
+            local: HashMap::new(),
+            local_block: vec![],
             local_frame_size: 0,
         }
     }

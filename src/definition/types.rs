@@ -3,7 +3,7 @@ use crate::definition::number::Number;
 use crate::make_ast::AST;
 use std::{collections::HashMap, rc::Rc};
 
-pub struct TypeMember {
+pub struct SturctMember {
     offset: usize,
     name: String,
     type_: Rc<Type>,
@@ -28,7 +28,7 @@ pub struct Type {
     name: Option<String>,
     size: usize,
     primitive: Option<PrimitiveType>,
-    member: Option<Vec<TypeMember>>,
+    member: Option<Vec<(usize, SturctMember)>>,
     function: Option<Function>,
 }
 
