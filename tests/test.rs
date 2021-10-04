@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 extern crate compiler;
 
 use std::fs;
@@ -16,25 +15,44 @@ fn execute_binary(dir: &Path) -> i32 {
     status
 }
 
-fn make_binary(dir: &Path) {
-    Command::new("cc")
+fn make_binary(dir: &Path, assembley_path: &Path) {
+    let command;
+    if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
+        // something
+        command = "cc";
+    } else {
+        command = "x86_64-linux-gnu-gcc";
+    }
+
+    let sts = Command::new(command)
         .arg("-o")
         .arg(dir.join("a.out"))
-        .arg(dir.join("tmp.s"))
-        .output()
-        .expect("failed to make binary");
+        .arg(assembley_path)
+        .status()
+        .expect("failed to make binary")
+        .code()
+        .unwrap();
+    assert_eq!(0, sts);
 }
 
 #[test]
 fn add_test() {
     let dir = Path::new("tests/add");
     let source = dir.join("add.test");
-    let _result = fs::read_to_string(dir.join("result"))
+    let output = dir.join("tmp.s");
+    let answer = fs::read_to_string(dir.join("result"))
         .unwrap()
         .trim()
         .parse::<i32>()
         .unwrap();
     let tokens = compiler::source_tokenizer::tokenize(&source);
     let nodes = compiler::token_interpreter::make_nodes(tokens);
-    compiler::ast_maker::make_asts(nodes);
+    let asts = compiler::ast_maker::make_asts(nodes);
+    compiler::output_assembly::output_assembly(asts, &output);
+    make_binary(dir, &output);
+
+    if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
+        let result = execute_binary(dir);
+        assert_eq!(result, answer);
+    }
 }

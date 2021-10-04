@@ -2,6 +2,7 @@
 mod ast_maker;
 mod definition;
 mod error;
+mod output_assembly;
 mod source_tokenizer;
 mod token_interpreter;
 
@@ -18,6 +19,8 @@ fn main() {
         let path = Path::new(arg);
         let tokens = tokenize(path);
         let nodes = make_nodes(tokens);
-        make_asts(nodes);
+        let asts = make_asts(nodes);
+        let outputpath = Path::new("./tmp.s");
+        output_assembly::output_assembly(asts, &outputpath);
     }
 }
