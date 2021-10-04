@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 mod ast_maker;
 mod definition;
 mod error;

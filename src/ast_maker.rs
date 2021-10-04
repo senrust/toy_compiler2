@@ -1,7 +1,8 @@
-use crate::definition::functions::Functions;
+use crate::definition::definitions::Definitions;
+use crate::definition::functions::Function;
 use crate::definition::number::Number;
 use crate::definition::types::*;
-use crate::definition::variables::{Variable, Variables};
+use crate::definition::variables::*;
 use crate::error::*;
 use crate::token_interpreter::{Node, SymbolKind};
 use std::rc::Rc;
@@ -95,12 +96,13 @@ pub enum OperationKind {
 }
 
 pub enum ASTKind {
-    FuncionFefinition,
+    FuncionDeclaration(String),
+    FuncionCall(Function),
     Operation(OperationKind),
-    FuncionCall,
-    Variable(Variable),
-    ImmidiateInterger(Rc<Type>, u64),
-    ImmidiateFloat(Rc<Type>, f64),
+    LocalVal(LocalVariable),
+    GlobalVal(GlobalVariable),
+    ImmidiateInterger(Number),
+    ImmidiateFloat(Number),
 }
 
 pub struct AST {
@@ -113,9 +115,9 @@ pub struct AST {
 }
 
 impl AST {
-    fn new_integer_ast(num: u64, type_: Rc<Type>) -> AST {
+    fn new_integer_ast(num: Number, type_: Rc<Type>) -> AST {
         AST {
-            kind: ASTKind::ImmidiateInterger(type_.clone(), num),
+            kind: ASTKind::ImmidiateInterger(num),
             type_,
             left: None,
             right: None,
@@ -141,35 +143,15 @@ impl AST {
     }
 }
 
-struct ProgramInfo {
-    types: Types,
-    variables: Variables,
-    functions: Functions,
-}
-
-impl ProgramInfo {
-    fn new(types: Types, variables: Variables, functions: Functions) -> Self {
-        Self {
-            types,
-            variables,
-            functions,
-        }
-    }
-
-    fn get_imidiate_type(&self, num: &Number) -> Rc<Type> {
-        self.types.get_imidiate_type(&num)
-    }
-}
-
-fn ast_number(nodes: &mut Nodes, programinfo: &mut ProgramInfo) -> Result<AST, ()> {
+fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
     if nodes.expect_number() {
         if let Ok(num) = nodes.consume_integer() {
-            let type_ = programinfo.get_imidiate_type(&num);
+            let type_ = definitions.get_primitive_type(&num);
             match num {
                 Number::U64(num_u64) => {
-                    return Ok(AST::new_integer_ast(num_u64, type_));
+                    return Ok(AST::new_integer_ast(Number::U64(num_u64), type_));
                 }
-                Number::F64(num_f64) => Err(()),
+                Number::F64(_num_f64) => Err(()),
             }
         } else {
             Err(())
@@ -180,8 +162,8 @@ fn ast_number(nodes: &mut Nodes, programinfo: &mut ProgramInfo) -> Result<AST, (
 }
 
 // add = num | (+  num| - num)*
-fn ast_add(nodes: &mut Nodes, programinfo: &mut ProgramInfo) -> Result<AST, ()> {
-    if let Ok(left_number_ast) = ast_number(nodes, programinfo) {
+fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
+    if let Ok(left_number_ast) = ast_number(nodes, definitions) {
         let mut operation_kind;
         let mut add_ast = left_number_ast;
         loop {
@@ -194,8 +176,9 @@ fn ast_add(nodes: &mut Nodes, programinfo: &mut ProgramInfo) -> Result<AST, ()> 
             } else {
                 unexpected_node_err(&nodes.get().unwrap().info);
             }
-            if let Ok(right_number_ast) = ast_number(nodes, programinfo) {
-                let type_: Rc<Type> = evaluate_binary_operation_type(&add_ast, &right_number_ast);
+            if let Ok(right_number_ast) = ast_number(nodes, definitions) {
+                let type_: Rc<Type> =
+                    evaluate_binary_operation_type(&add_ast, &right_number_ast).unwrap();
                 add_ast =
                     AST::new_binary_operation_ast(operation_kind, type_, add_ast, right_number_ast);
             } else {
@@ -214,10 +197,7 @@ fn ast_add(nodes: &mut Nodes, programinfo: &mut ProgramInfo) -> Result<AST, ()> 
 pub fn make_asts(node_vec: Vec<Node>) -> Vec<AST> {
     let mut nodes = Nodes::new(node_vec);
     let mut asts: Vec<AST> = vec![];
-    let types = Types::new();
-    let variables = Variables::new();
-    let functions = Functions::new();
-    let mut programinfo = ProgramInfo::new(types, variables, functions);
+    let mut programinfo = Definitions::new();
     while nodes.has_node() {
         let ast = ast_add(&mut nodes, &mut programinfo).unwrap();
         asts.push(ast);

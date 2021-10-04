@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 extern crate compiler;
 
 use std::fs;
@@ -28,7 +29,7 @@ fn make_binary(dir: &Path) {
 fn add_test() {
     let dir = Path::new("tests/add");
     let source = dir.join("add.test");
-    let result = fs::read_to_string(dir.join("result"))
+    let _result = fs::read_to_string(dir.join("result"))
         .unwrap()
         .trim()
         .parse::<i32>()
