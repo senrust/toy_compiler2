@@ -1,15 +1,14 @@
+mod ast_maker;
 mod definition;
 mod error;
+mod source_tokenizer;
 mod token_interpreter;
-mod ast_maker;
-mod tokenizer;
 
+use ast_maker::make_asts;
+use source_tokenizer::tokenize;
 use std::env;
 use std::path::Path;
 use token_interpreter::make_nodes;
-use ast_maker::make_asts;
-use tokenizer::tokenize;
-
 
 static mut SOURCE_TXT: Vec<String> = vec![];
 fn main() {
@@ -19,6 +18,5 @@ fn main() {
         let tokens = tokenize(path);
         let nodes = make_nodes(tokens);
         make_asts(nodes);
-
     }
 }

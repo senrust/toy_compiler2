@@ -1,8 +1,8 @@
 extern crate compiler;
 
 use std::fs;
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
 
 fn execute_binary(dir: &Path) -> i32 {
     let status = Command::new("sh")
@@ -28,8 +28,12 @@ fn make_binary(dir: &Path) {
 fn add_test() {
     let dir = Path::new("tests/add");
     let source = dir.join("add.test");
-    let result = fs::read_to_string(dir.join("result")).unwrap().trim().parse::<i32>().unwrap();
-    let tokens = compiler::tokenizer::tokenize(&source);
+    let result = fs::read_to_string(dir.join("result"))
+        .unwrap()
+        .trim()
+        .parse::<i32>()
+        .unwrap();
+    let tokens = compiler::source_tokenizer::tokenize(&source);
     let nodes = compiler::token_interpreter::make_nodes(tokens);
     compiler::ast_maker::make_asts(nodes);
 }

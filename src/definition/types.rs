@@ -1,6 +1,6 @@
 use super::functions::Function;
-use crate::definition::number::Number;
 use crate::ast_maker::AST;
+use crate::definition::number::Number;
 use std::{collections::HashMap, rc::Rc};
 
 pub struct SturctMember {
@@ -43,7 +43,7 @@ impl Type {
             function: None,
         }
     }
-    
+
     fn is_pointer(&self) -> bool {
         self.pointer.is_some()
     }

@@ -1,7 +1,7 @@
 use std::process::exit;
 
+use crate::source_tokenizer::{TokenizeError, TokenizeInfo};
 use crate::token_interpreter::{NodeError, NodeInfo};
-use crate::tokenizer::{TokenizeError, TokenizeInfo};
 
 use crate::SOURCE_TXT;
 

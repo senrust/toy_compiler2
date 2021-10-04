@@ -1,6 +1,6 @@
-use crate::definition::functions::{Functions};
+use crate::definition::functions::Functions;
 use crate::definition::number::Number;
-use crate::definition::{types::*};
+use crate::definition::types::*;
 use crate::definition::variables::{Variable, Variables};
 use crate::error::*;
 use crate::token_interpreter::{Node, SymbolKind};
@@ -145,7 +145,7 @@ struct ProgramInfo {
     types: Types,
     variables: Variables,
     functions: Functions,
-} 
+}
 
 impl ProgramInfo {
     fn new(types: Types, variables: Variables, functions: Functions) -> Self {

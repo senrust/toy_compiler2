@@ -1,6 +1,6 @@
 use crate::definition::number::{string_to_number, Number};
 use crate::definition::types::Types;
-use crate::tokenizer::{Token, TokenKind};
+use crate::source_tokenizer::{Token, TokenKind};
 use std::fmt;
 
 #[derive(Debug, PartialEq, Eq)]
