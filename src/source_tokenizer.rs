@@ -2,6 +2,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 
 use crate::error::tokenizer_error;
 use crate::SOURCE_TXT;
@@ -361,7 +362,7 @@ fn get_quote_text(
     }
 }
 
-pub fn tokenize(filepath: &str) -> Vec<Token> {
+pub fn tokenize(filepath: &Path) -> Vec<Token> {
     let file = File::open(filepath).unwrap();
     let reader = BufReader::new(file);
 
