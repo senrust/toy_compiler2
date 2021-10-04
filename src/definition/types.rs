@@ -41,7 +41,7 @@ pub struct Type {
     pub pointer: Option<Rc<Type>>,
     pub array: Option<Rc<Type>>,
     pub struct_name: Option<String>,
-    pub struct_members: Option<Rc<Vec<(usize, SturctMember)>>>,
+    pub struct_members: Option<Rc<HashMap<String, (usize, SturctMember)>>>,
     pub function: Option<Rc<Function>>,
     _private: PhantomData<()>, // コンストラクタからのみ作成できるようにする
 }
@@ -151,7 +151,7 @@ impl Type {
     // 無名構造体は空文字列を渡す
     pub fn new_stuct(name: &String, members: Vec<SturctMember>) -> Self {
         let mut offset: usize = 0;
-        let mut member_vec: Vec<(usize, SturctMember)> = vec![];
+        let mut member_vec: HashMap<String, (usize, SturctMember)> = HashMap::new();
         for member in members {
             let member_size = member.type_.size;
             // このメンバーを加えることでアライメント境界を超える場合はオフセットをアライメント境界まで動かす
@@ -162,7 +162,7 @@ impl Type {
                 }
             }
 
-            member_vec.push((offset, member));
+            member_vec.insert(member.name.clone(), (offset, member));
             offset += member_size;
         }
         Type {
