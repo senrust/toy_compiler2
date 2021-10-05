@@ -15,8 +15,8 @@ fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
 }
 
 fn write_operation_pop<T: Write>(buf: &mut T) {
-    writeln!(buf, "    pop rdi").unwrap();
     writeln!(buf, "    pop rax").unwrap();
+    writeln!(buf, "    pop rdi").unwrap();
 }
 
 fn write_operation<T: Write>(buf: &mut T, ope: &str) {
@@ -27,18 +27,25 @@ fn write_operation<T: Write>(buf: &mut T, ope: &str) {
 
 fn exetute_mul<T: Write>(ast: &mut AST, buf: &mut T) {
     if let ASTKind::Operation(Operation::Mul) = ast.kind {
+        output_ast(ast.right.take().unwrap().as_mut(), buf);
+        output_ast(ast.left.take().unwrap().as_mut(), buf);
         write_operation(buf, "imul");
-    } else if let ASTKind::Operation(Operation::Div) = ast.kind {
+    } else {
+        unexpected_ast_err(&ast, "operation mul".to_string());
+    }
+}
+
+fn exetute_div<T: Write>(ast: &mut AST, buf: &mut T) {
+    if let ASTKind::Operation(Operation::Div) = ast.kind {
+        output_ast(ast.right.take().unwrap().as_mut(), buf);
+        output_ast(ast.left.take().unwrap().as_mut(), buf);
         write_operation_pop(buf);
         writeln!(buf, "    cqo").unwrap();
         writeln!(buf, "    idiv rdi").unwrap();
         writeln!(buf, "    push rax").unwrap();
     } else {
-        unexpected_ast_err(&ast, "operation mul or div".to_string());
+        unexpected_ast_err(&ast, "operation div".to_string());
     }
-
-    output_ast(ast.right.take().unwrap().as_mut(), buf);
-    output_ast(ast.left.take().unwrap().as_mut(), buf);
 }
 
 fn exetute_add<T: Write>(ast: &mut AST, buf: &mut T) {
@@ -59,8 +66,10 @@ fn exetute_add<T: Write>(ast: &mut AST, buf: &mut T) {
 fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
     if let ASTKind::Operation(Operation::Add | Operation::Sub) = ast.kind {
         exetute_add(ast, buf);
-    } else if let ASTKind::Operation(Operation::Mul | Operation::Div) = ast.kind {
+    } else if let ASTKind::Operation(Operation::Mul) = ast.kind {
         exetute_mul(ast, buf);
+    } else if let ASTKind::Operation(Operation::Div) = ast.kind {
+        exetute_div(ast, buf);
     } else if let ASTKind::ImmidiateInterger(_) = ast.kind {
         push_number(ast, buf);
     } else {
