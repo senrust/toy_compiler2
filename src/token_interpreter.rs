@@ -1,5 +1,6 @@
 use crate::definition::number::{string_to_number, Number};
 use crate::definition::symbols::{get_token_symbol, Symbol};
+use crate::error::*;
 use crate::source_tokenizer::{Token, TokenKind};
 use std::fmt;
 
@@ -140,6 +141,7 @@ pub enum NodeError {
     NotValueError,
     UnexpectNodeError,
     UnexpectEndError,
+    InvalidNumberErr(String),
 }
 
 impl fmt::Display for NodeError {
@@ -153,6 +155,9 @@ impl fmt::Display for NodeError {
             }
             NodeError::UnexpectEndError => {
                 write!(f, "unexpected end")
+            }
+            NodeError::InvalidNumberErr(str) => {
+                write!(f, "{} is invalid number", str)
             }
         }
     }
@@ -247,6 +252,19 @@ impl Nodes {
             }
         } else {
             Err(())
+        }
+    }
+
+    pub fn output_unexpected_node_err(&self)  -> !{
+        if let Some(err_node) = self.get() {
+            unexpected_node_err(&err_node.info);
+        } else {
+            // 何もトークンが無い場合
+            if let Some(last_node) = self.get_last() {
+                unexpected_end_err(&last_node.info);
+            } else {
+                no_token_err();
+            }
         }
     }
 }

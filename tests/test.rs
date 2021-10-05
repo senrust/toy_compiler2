@@ -1,7 +1,7 @@
 extern crate compiler;
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn execute_binary(dir: &Path) -> i32 {
@@ -43,36 +43,38 @@ fn do_compile(dir: &Path, source: &Path, output: &Path) {
     make_binary(dir, output);
 }
 
-#[test]
-fn add_test() {
-    let dir = Path::new("tests/add");
-    let source = dir.join("add.test");
+fn get_test_parameter(test_type: &str) -> (PathBuf, PathBuf, PathBuf, i32){
+    let dir = Path::new("tests").join(test_type);
+    let source = dir.join(format!("{}.test", test_type));
     let output = dir.join("tmp.s");
     let answer = fs::read_to_string(dir.join("result"))
         .unwrap()
         .trim()
         .parse::<i32>()
         .unwrap();
-    do_compile(dir, &source, &output);
+    (dir, source, output, answer)
+}
+
+fn do_test(test_type: &str) {
+    let (dir, source, output, answer) = get_test_parameter(test_type);
+    do_compile(&dir, &source, &output);
     if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
-        let result = execute_binary(dir);
+        let result = execute_binary(&dir);
         assert_eq!(result, answer);
     }
 }
 
 #[test]
+fn add_test() {
+    do_test("add");
+}
+
+#[test]
 fn mul_test() {
-    let dir = Path::new("tests/mul");
-    let source = dir.join("mul.test");
-    let output = dir.join("tmp.s");
-    let answer = fs::read_to_string(dir.join("result"))
-        .unwrap()
-        .trim()
-        .parse::<i32>()
-        .unwrap();
-    do_compile(dir, &source, &output);
-    if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
-        let result = execute_binary(dir);
-        assert_eq!(result, answer);
-    }
+    do_test("mul");
+}
+
+#[test]
+fn parenthesis_test() {
+    do_test("parenthesis");
 }

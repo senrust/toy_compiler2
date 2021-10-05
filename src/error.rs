@@ -6,6 +6,15 @@ use crate::token_interpreter::{NodeError, NodeInfo};
 
 use crate::SOURCE_TXT;
 
+fn get_token(info: &NodeInfo) -> String {
+    let error_line;
+    unsafe {
+        error_line = &SOURCE_TXT[info.line];
+    }
+    let token = error_line[info.pos..info.pos + info.width].to_string();
+    token
+}
+
 // トークン化に失敗した行とそのトークンを表示して終了する
 pub fn tokenizer_error(err: TokenizeError, info: &TokenizeInfo) -> ! {
     let error_line;
@@ -32,6 +41,13 @@ fn print_node_error_info(err: NodeError, info: &NodeInfo) {
     eprintln!("line{}, pos{}, error: {}", info.line + 1, info.pos + 1, err);
 }
 
+pub fn invalidnumber_node_err(info: &NodeInfo) -> ! {
+    // get invalid token
+    let invalidnum_token = get_token(info);
+    print_node_error_info(NodeError::InvalidNumberErr(invalidnum_token), info);
+    exit(-1);
+}
+
 pub fn unexpected_node_err(info: &NodeInfo) -> ! {
     print_node_error_info(NodeError::UnexpectNodeError, info);
     exit(-1);
@@ -40,6 +56,11 @@ pub fn unexpected_node_err(info: &NodeInfo) -> ! {
 pub fn unexpected_end_err(last_info: &NodeInfo) -> ! {
     let last_info = NodeInfo::new(last_info.line, last_info.pos + last_info.width, 0);
     print_node_error_info(NodeError::UnexpectEndError, &last_info);
+    exit(-1);
+}
+
+pub fn no_token_err() -> ! {
+    eprintln!("no valid token");
     exit(-1);
 }
 

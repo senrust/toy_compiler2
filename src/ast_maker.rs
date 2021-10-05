@@ -93,95 +93,76 @@ impl AST {
     }
 }
 
-fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
+// primary = num | "(" add ")"
+fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     if nodes.expect_number() {
         if let Ok((num, info)) = nodes.consume_integer() {
             let type_ = definitions.get_primitive_type(&num);
             match num {
                 Number::U64(num_u64) => {
-                    return Ok(AST::new_integer_ast(Number::U64(num_u64), info, type_));
+                    return AST::new_integer_ast(Number::U64(num_u64), info, type_);
                 }
-                Number::F64(_num_f64) => Err(()),
+                Number::F64(_num_f64) => unreachable!(),
             }
         } else {
-            Err(())
+            // expect_numberでノードが存在することはチェック済みなのでunwrapを使用
+            invalidnumber_node_err(&nodes.get().unwrap().info);
+        }
+    } else if nodes.expect_symbol(Symbol::LeftParenthesis) {
+        // drop "(" node
+        nodes.consume().unwrap();
+        let add_ast = ast_add(nodes, definitions);
+        if nodes.expect_symbol(Symbol::RightParenthesis) {
+            // drop ")" node
+            nodes.consume().unwrap();
+            return add_ast;
+        } else {
+            nodes.output_unexpected_node_err();
         }
     } else {
-        Err(())
+        nodes.output_unexpected_node_err();
     }
 }
 
-// mul = num | (* num | / num)*
-fn ast_mul(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
-    if let Ok(left_ast) = ast_number(nodes, definitions) {
-        let mut operation;
-        let mut mul_ast = left_ast;
-        loop {
-            if nodes.expect_symbol(Symbol::Mul) {
-                operation = Operation::Mul;
-            } else if nodes.expect_symbol(Symbol::Div) {
-                operation = Operation::Div;
-            } else {
-                return Ok(mul_ast);
-            }
-
-            let mul_ast_info = nodes.consume().unwrap();
-            if let Ok(right_ast) = ast_number(nodes, definitions) {
-                let type_: Rc<Type> = evaluate_binary_operation_type(&mul_ast, &right_ast).unwrap();
-                mul_ast = AST::new_binary_operation_ast(
-                    operation,
-                    mul_ast_info,
-                    type_,
-                    mul_ast,
-                    right_ast,
-                );
-            } else {
-                if nodes.is_empty() {
-                    unexpected_end_err(&nodes.get_last().unwrap().info);
-                } else {
-                    unexpected_node_err(&nodes.get().unwrap().info);
-                }
-            }
+// mul = primary | (* primary | / primary)*
+fn ast_mul(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    let left_ast = ast_primary(nodes, definitions);
+    let mut operation;
+    let mut mul_ast = left_ast;
+    loop {
+        if nodes.expect_symbol(Symbol::Mul) {
+            operation = Operation::Mul;
+        } else if nodes.expect_symbol(Symbol::Div) {
+            operation = Operation::Div;
+        } else {
+            return mul_ast;
         }
-    } else {
-        unexpected_node_err(&nodes.get().unwrap().info);
+
+        let ast_info = nodes.consume().unwrap();
+        let right_ast = ast_primary(nodes, definitions);
+        let type_: Rc<Type> = evaluate_binary_operation_type(&mul_ast, &right_ast).unwrap();
+        mul_ast = AST::new_binary_operation_ast(operation, ast_info, type_, mul_ast, right_ast);
     }
 }
 
 // add = mul | (+  mul | - mul)*
-fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
-    if let Ok(left_ast) = ast_mul(nodes, definitions) {
-        let mut operation;
-        let mut add_ast = left_ast;
-        loop {
-            if nodes.expect_symbol(Symbol::Add) {
-                operation = Operation::Add;
-            } else if nodes.expect_symbol(Symbol::Sub) {
-                operation = Operation::Sub;
-            } else {
-                return Ok(add_ast);
-            }
-
-            let add_ast_info = nodes.consume().unwrap();
-            if let Ok(right_ast) = ast_mul(nodes, definitions) {
-                let type_: Rc<Type> = evaluate_binary_operation_type(&add_ast, &right_ast).unwrap();
-                add_ast = AST::new_binary_operation_ast(
-                    operation,
-                    add_ast_info,
-                    type_,
-                    add_ast,
-                    right_ast,
-                );
-            } else {
-                if nodes.is_empty() {
-                    unexpected_end_err(&nodes.get_last().unwrap().info);
-                } else {
-                    unexpected_node_err(&nodes.get().unwrap().info);
-                }
-            }
+fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    let left_ast = ast_mul(nodes, definitions);
+    let mut operation;
+    let mut add_ast = left_ast;
+    loop {
+        if nodes.expect_symbol(Symbol::Add) {
+            operation = Operation::Add;
+        } else if nodes.expect_symbol(Symbol::Sub) {
+            operation = Operation::Sub;
+        } else {
+            return add_ast;
         }
-    } else {
-        unexpected_node_err(&nodes.get().unwrap().info);
+
+        let ast_info = nodes.consume().unwrap();
+        let right_ast = ast_mul(nodes, definitions);
+        let type_: Rc<Type> = evaluate_binary_operation_type(&add_ast, &right_ast).unwrap();
+        add_ast = AST::new_binary_operation_ast(operation, ast_info, type_, add_ast, right_ast);
     }
 }
 
@@ -189,7 +170,7 @@ pub fn make_asts(mut nodes: Nodes) -> Vec<AST> {
     let mut asts: Vec<AST> = vec![];
     let mut programinfo = Definitions::new();
     while nodes.has_node() {
-        let ast = ast_add(&mut nodes, &mut programinfo).unwrap();
+        let ast = ast_add(&mut nodes, &mut programinfo);
         asts.push(ast);
     }
     asts
