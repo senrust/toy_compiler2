@@ -63,7 +63,7 @@ fn print_ast_error_info(ast: &AST, err: ASTError) {
     }
 }
 
-pub fn unexpected_ast_err(ast: &AST, expected_kind: &'static str) -> ! {
+pub fn unexpected_ast_err(ast: &AST, expected_kind: String) -> ! {
     print_ast_error_info(
         &ast,
         ASTError::UnexpecdASTKindError(ast.kind.clone(), expected_kind),

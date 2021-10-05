@@ -59,3 +59,20 @@ fn add_test() {
         assert_eq!(result, answer);
     }
 }
+
+#[test]
+fn mul_test() {
+    let dir = Path::new("tests/mul");
+    let source = dir.join("mul.test");
+    let output = dir.join("tmp.s");
+    let answer = fs::read_to_string(dir.join("result"))
+        .unwrap()
+        .trim()
+        .parse::<i32>()
+        .unwrap();
+    do_compile(dir, &source, &output);
+    if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
+        let result = execute_binary(dir);
+        assert_eq!(result, answer);
+    }
+}

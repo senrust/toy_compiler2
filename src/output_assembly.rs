@@ -10,39 +10,69 @@ fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
     if let ASTKind::ImmidiateInterger(Number::U64(num)) = ast.kind {
         writeln!(buf, "    push {}", num).unwrap();
     } else {
-        unexpected_ast_err(&ast, "imidiate number");
+        unexpected_ast_err(&ast, "imidiate number".to_string());
     }
 }
 
-fn exetute_add<T: Write>(ast: &mut AST, buf: &mut T) {
-    let operation_str;
-    if let ASTKind::Operation(Operation::Add) = ast.kind {
-        operation_str = "add";
-    } else if let ASTKind::Operation(Operation::Sub) = ast.kind {
-        operation_str = "sub";
-    } else if let ASTKind::ImmidiateInterger(_) = ast.kind {
-        push_number(ast, buf);
-        return;
-    } else {
-        unexpected_ast_err(&ast, "operation add or sub");
-    }
-    exetute_add(ast.right.take().unwrap().as_mut(), buf);
-    exetute_add(ast.left.take().unwrap().as_mut(), buf);
+fn write_operation_pop<T: Write>(buf: &mut T) {
+    writeln!(buf, "    pop rdi").unwrap();
     writeln!(buf, "    pop rax").unwrap();
-    writeln!(buf, "    pop rbx").unwrap();
-    writeln!(buf, "    {} rax, rbx", operation_str).unwrap();
+}
+
+fn write_operation<T: Write>(buf: &mut T, ope: &str) {
+    write_operation_pop(buf);
+    writeln!(buf, "    {} rax, rdi", ope).unwrap();
     writeln!(buf, "    push rax").unwrap();
 }
 
-fn output_ast<T: Write>(mut ast: AST, buf: &mut T) {
-    exetute_add(&mut ast, buf);
+fn exetute_mul<T: Write>(ast: &mut AST, buf: &mut T) {
+    if let ASTKind::Operation(Operation::Mul) = ast.kind {
+        write_operation(buf, "imul");
+    } else if let ASTKind::Operation(Operation::Div) = ast.kind {
+        write_operation_pop(buf);
+        writeln!(buf, "    cqo").unwrap();
+        writeln!(buf, "    idiv rdi").unwrap();
+        writeln!(buf, "    push rax").unwrap();
+    } else {
+        unexpected_ast_err(&ast, "operation mul or div".to_string());
+    }
+
+    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    output_ast(ast.left.take().unwrap().as_mut(), buf);
+}
+
+fn exetute_add<T: Write>(ast: &mut AST, buf: &mut T) {
+    let operation;
+    if let ASTKind::Operation(Operation::Add) = ast.kind {
+        operation = "add";
+    } else if let ASTKind::Operation(Operation::Sub) = ast.kind {
+        operation = "sub";
+    } else {
+        unexpected_ast_err(&ast, "operation add or sub".to_string());
+    }
+
+    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    write_operation(buf, operation);
+}
+
+fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
+    if let ASTKind::Operation(Operation::Add | Operation::Sub) = ast.kind {
+        exetute_add(ast, buf);
+    } else if let ASTKind::Operation(Operation::Mul | Operation::Div) = ast.kind {
+        exetute_mul(ast, buf);
+    } else if let ASTKind::ImmidiateInterger(_) = ast.kind {
+        push_number(ast, buf);
+    } else {
+        unexpected_ast_err(&ast, "operation add or sub".to_string());
+    }
 }
 
 fn output_asts<T: Write>(asts: Vec<AST>, buf: &mut T) {
     // 現状は1関数のみなのでmainだけ
-    for ast in asts {
+    for mut ast in asts {
         writeln!(buf, "main:").unwrap();
-        output_ast(ast, buf);
+        output_ast(&mut ast, buf);
         writeln!(buf, "    pop rax").unwrap();
         writeln!(buf, "    ret").unwrap();
     }

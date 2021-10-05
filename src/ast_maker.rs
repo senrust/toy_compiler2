@@ -10,7 +10,8 @@ use std::fmt;
 use std::rc::Rc;
 
 pub enum ASTError {
-    UnexpecdASTKindError(ASTKind, &'static str),
+    UnexpecdASTKindError(ASTKind, String),
+    UnSupportedASTKindError(ASTKind),
 }
 
 impl fmt::Display for ASTError {
@@ -20,8 +21,11 @@ impl fmt::Display for ASTError {
                 write!(
                     f,
                     "unexpected ast kind: {:?}, expexcted: {}",
-                    ast_type, *expected_type
+                    ast_type, expected_type
                 )
+            }
+            ASTError::UnSupportedASTKindError(ast_type) => {
+                write!(f, "unsupported ast: {:?}", ast_type,)
             }
         }
     }
@@ -31,6 +35,8 @@ impl fmt::Display for ASTError {
 pub enum Operation {
     Add,
     Sub,
+    Mul,
+    Div,
 }
 
 #[derive(Debug, Clone)]
@@ -105,9 +111,46 @@ fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, (
     }
 }
 
-// add = num | (+  num| - num)*
-fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
+// mul = num | (* num | / num)*
+fn ast_mul(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
     if let Ok(left_ast) = ast_number(nodes, definitions) {
+        let mut operation;
+        let mut mul_ast = left_ast;
+        loop {
+            if nodes.expect_symbol(Symbol::Mul) {
+                operation = Operation::Mul;
+            } else if nodes.expect_symbol(Symbol::Div) {
+                operation = Operation::Div;
+            } else {
+                return Ok(mul_ast);
+            }
+
+            let mul_ast_info = nodes.consume().unwrap();
+            if let Ok(right_ast) = ast_number(nodes, definitions) {
+                let type_: Rc<Type> = evaluate_binary_operation_type(&mul_ast, &right_ast).unwrap();
+                mul_ast = AST::new_binary_operation_ast(
+                    operation,
+                    mul_ast_info,
+                    type_,
+                    mul_ast,
+                    right_ast,
+                );
+            } else {
+                if nodes.is_empty() {
+                    unexpected_end_err(&nodes.get_last().unwrap().info);
+                } else {
+                    unexpected_node_err(&nodes.get().unwrap().info);
+                }
+            }
+        }
+    } else {
+        unexpected_node_err(&nodes.get().unwrap().info);
+    }
+}
+
+// add = mul | (+  mul | - mul)*
+fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
+    if let Ok(left_ast) = ast_mul(nodes, definitions) {
         let mut operation;
         let mut add_ast = left_ast;
         loop {
@@ -115,14 +158,12 @@ fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> 
                 operation = Operation::Add;
             } else if nodes.expect_symbol(Symbol::Sub) {
                 operation = Operation::Sub;
-            } else if nodes.is_empty() {
-                return Ok(add_ast);
             } else {
-                unexpected_node_err(&nodes.get().unwrap().info);
+                return Ok(add_ast);
             }
 
             let add_ast_info = nodes.consume().unwrap();
-            if let Ok(right_ast) = ast_number(nodes, definitions) {
+            if let Ok(right_ast) = ast_mul(nodes, definitions) {
                 let type_: Rc<Type> = evaluate_binary_operation_type(&add_ast, &right_ast).unwrap();
                 add_ast = AST::new_binary_operation_ast(
                     operation,

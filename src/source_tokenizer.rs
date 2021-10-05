@@ -372,6 +372,7 @@ pub fn tokenize(filepath: &Path) -> Vec<Token> {
 
     let source_txt: &mut Vec<String>;
     unsafe {
+        SOURCE_TXT.clear();
         source_txt = &mut SOURCE_TXT;
     }
 

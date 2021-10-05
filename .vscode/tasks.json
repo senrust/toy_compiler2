@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cargo test",
+            "type": "shell",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "command": "cargo",
+            "args": [
+                "test",
+                "--",
+				"--nocapture",
+				"--test-threads=1",
+            ]
+        }
+    ]
+}

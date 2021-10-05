@@ -31,7 +31,10 @@
                     "test",
                     "--no-run",
                     "--test=test",
-                    "--package=compiler"
+                    "--package=compiler",
+                    "--",
+                    "--nocapture",
+                    "--test-threads=1",
                 ],
                 "filter": {
                     "name": "test",
