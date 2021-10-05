@@ -1,116 +1,17 @@
 use crate::definition::number::{string_to_number, Number};
+use crate::definition::symbols::{get_token_symbol, Symbol};
 use crate::source_tokenizer::{Token, TokenKind};
 use std::fmt;
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum SymbolKind {
-    Period,
-    Comma,
-    Colon,
-    SemiColon,
-    Assign,
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Rem,
-    BitNot,
-    BitAnd,
-    BitOr,
-    BitXor,
-    LeftShift,
-    RightShift,
-    Not,
-    And,
-    Or,
-    Eq,
-    NotEq,
-    Gt,
-    Lt,
-    Ge,
-    Le,
-    Increment,
-    Decrement,
-    AddAssign,
-    SubAssign,
-    MulAssign,
-    DivAssign,
-    RemAssign,
-    LeftShiftAssign,
-    RightShiftAssign,
-    AndAssign,
-    OrAssign,
-    XorAssign,
-    LeftParenthesis,
-    RightParenthesis,
-    LeftSquareBracket,
-    RightSquareBracket,
-    LeftCurlyBracket,
-    RightCurlyBracket,
-    Reference,
-    Sharp,
-}
-
-fn get_symbol_token_kind(token: String) -> SymbolKind {
-    match token.as_str() {
-        "." => SymbolKind::Period,
-        "," => SymbolKind::Comma,
-        ":" => SymbolKind::Colon,
-        ";" => SymbolKind::SemiColon,
-        "=" => SymbolKind::Assign,
-        "+" => SymbolKind::Add,
-        "-" => SymbolKind::Sub,
-        "*" => SymbolKind::Mul,
-        "/" => SymbolKind::Div,
-        "%" => SymbolKind::Rem,
-        "~" => SymbolKind::BitNot,
-        "&" => SymbolKind::BitAnd,
-        "|" => SymbolKind::BitOr,
-        "^" => SymbolKind::BitXor,
-        "<<" => SymbolKind::LeftShift,
-        ">>" => SymbolKind::RightShift,
-        "!" => SymbolKind::Not,
-        "&&" => SymbolKind::And,
-        "||" => SymbolKind::Or,
-        "==" => SymbolKind::Eq,
-        "!=" => SymbolKind::NotEq,
-        "<" => SymbolKind::Gt,
-        ">" => SymbolKind::Lt,
-        "<=" => SymbolKind::Ge,
-        ">=" => SymbolKind::Le,
-        "++" => SymbolKind::Increment,
-        "--" => SymbolKind::Decrement,
-        "+=" => SymbolKind::AddAssign,
-        "-=" => SymbolKind::SubAssign,
-        "*=" => SymbolKind::MulAssign,
-        "/=" => SymbolKind::DivAssign,
-        "%=" => SymbolKind::RemAssign,
-        "<<=" => SymbolKind::LeftShiftAssign,
-        ">>=" => SymbolKind::RightShiftAssign,
-        "&=" => SymbolKind::AndAssign,
-        "|=" => SymbolKind::OrAssign,
-        "^=" => SymbolKind::XorAssign,
-        "(" => SymbolKind::LeftParenthesis,
-        ")" => SymbolKind::RightParenthesis,
-        "[" => SymbolKind::LeftSquareBracket,
-        "]" => SymbolKind::RightSquareBracket,
-        "{" => SymbolKind::LeftCurlyBracket,
-        "}" => SymbolKind::RightCurlyBracket,
-        "->" => SymbolKind::Reference,
-        "#" => SymbolKind::Sharp,
-        _ => unreachable!(),
-    }
-}
 
 #[derive(Debug)]
 pub enum NodeKind {
     Number(String),
-    Symbol(SymbolKind),
+    Symbol(Symbol),
     Identifier(String),
     RawString(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeInfo {
     pub line: usize,
     pub pos: usize,
@@ -136,8 +37,8 @@ fn get_node_kind(token: Token) -> (NodeKind, NodeInfo) {
             return (NodeKind::RawString(token.token), info);
         }
         TokenKind::Symbol => {
-            let symbol_kind = get_symbol_token_kind(token.token);
-            return (NodeKind::Symbol(symbol_kind), info);
+            let symbol = get_token_symbol(token.token);
+            return (NodeKind::Symbol(symbol), info);
         }
     }
 }
@@ -149,17 +50,14 @@ pub struct Node {
 
 impl Node {
     fn new(token: Token) -> Self {
-        let (node_kind, node_info) = get_node_kind(token);
-        Node {
-            info: node_info,
-            kind: node_kind,
-        }
+        let (kind, info) = get_node_kind(token);
+        Node { info, kind }
     }
 
-    pub fn expect_symbol(&self, symbol_kind: &SymbolKind) -> bool {
+    pub fn expect_symbol(&self, expected_symbol: &Symbol) -> bool {
         match self.kind {
             NodeKind::Symbol(ref symbol) => {
-                return *symbol == *symbol_kind;
+                return *symbol == *expected_symbol;
             }
             _ => {
                 return false;
@@ -260,11 +158,95 @@ impl fmt::Display for NodeError {
     }
 }
 
-pub fn make_nodes(tokens: Vec<Token>) -> Vec<Node> {
+pub fn make_nodes(tokens: Vec<Token>) -> Nodes {
     let mut nodes: Vec<Node> = vec![];
     for token in tokens {
         let node = Node::new(token);
         nodes.push(node);
     }
-    nodes
+    Nodes::new(nodes)
+}
+
+pub struct Nodes {
+    vec: Vec<Node>,
+    cur: usize,
+}
+
+impl Nodes {
+    pub fn new(node_vec: Vec<Node>) -> Self {
+        Nodes {
+            vec: node_vec,
+            cur: 0,
+        }
+    }
+
+    pub fn get(&self) -> Option<&Node> {
+        self.vec.get(self.cur)
+    }
+
+    pub fn get_last(&self) -> Option<&Node> {
+        self.vec.last()
+    }
+
+    pub fn proceed(&mut self) {
+        self.cur += 1;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cur >= self.vec.len()
+    }
+
+    pub fn has_node(&self) -> bool {
+        self.cur < self.vec.len()
+    }
+
+    pub fn consume(&mut self) -> Result<NodeInfo, ()> {
+        if let Some(node) = self.vec.get(self.cur) {
+            self.cur += 1;
+            Ok(node.info.clone())
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn expect_symbol(&mut self, symbol: Symbol) -> bool {
+        if let Some(node) = self.vec.get(self.cur) {
+            if node.expect_symbol(&symbol) {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn expect_symbols(&mut self, symbols: &[Symbol]) -> bool {
+        for symbol in symbols {
+            if let Some(node) = self.vec.get(self.cur) {
+                if node.expect_symbol(symbol) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn expect_number(&self) -> bool {
+        if let Some(node) = self.vec.get(self.cur) {
+            node.expect_number()
+        } else {
+            false
+        }
+    }
+
+    pub fn consume_integer(&mut self) -> Result<(Number, NodeInfo), ()> {
+        if let Some(node) = self.vec.get(self.cur) {
+            if let Ok(num) = node.get_interger() {
+                self.cur += 1;
+                Ok((num, node.info.clone()))
+            } else {
+                Err(())
+            }
+        } else {
+            Err(())
+        }
+    }
 }

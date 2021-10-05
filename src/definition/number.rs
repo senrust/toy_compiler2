@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub enum Number {
     U64(u64),
     F64(f64),

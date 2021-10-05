@@ -1,112 +1,53 @@
 use crate::definition::definitions::Definitions;
 use crate::definition::functions::Function;
 use crate::definition::number::Number;
+use crate::definition::symbols::*;
 use crate::definition::types::*;
 use crate::definition::variables::*;
 use crate::error::*;
-use crate::token_interpreter::{Node, SymbolKind};
+use crate::token_interpreter::{NodeInfo, Nodes};
+use std::fmt;
 use std::rc::Rc;
 
-struct Nodes {
-    vec: Vec<Node>,
-    cur: usize,
+pub enum ASTError {
+    UnexpecdASTKindError(ASTKind, &'static str),
 }
 
-impl Nodes {
-    fn new(node_vec: Vec<Node>) -> Self {
-        Nodes {
-            vec: node_vec,
-            cur: 0,
-        }
-    }
-
-    fn get(&self) -> Option<&Node> {
-        self.vec.get(self.cur)
-    }
-
-    fn get_last(&self) -> Option<&Node> {
-        self.vec.last()
-    }
-
-    fn proceed(&mut self) {
-        self.cur += 1;
-    }
-
-    fn is_empty(&self) -> bool {
-        self.cur >= self.vec.len()
-    }
-
-    fn has_node(&self) -> bool {
-        self.cur < self.vec.len()
-    }
-
-    fn expect_symbols(&mut self, symbol_kinds: &[SymbolKind]) -> bool {
-        for symbol_kind in symbol_kinds {
-            if let Some(node) = self.vec.get(self.cur) {
-                if node.expect_symbol(symbol_kind) {
-                    return true;
-                }
+impl fmt::Display for ASTError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ASTError::UnexpecdASTKindError(ast_type, expected_type) => {
+                write!(
+                    f,
+                    "unexpected ast kind: {:?}, expexcted: {}",
+                    ast_type, *expected_type
+                )
             }
-        }
-        false
-    }
-
-    fn consume_symbol(&mut self, symbol_kind: SymbolKind) -> bool {
-        if let Some(node) = self.vec.get(self.cur) {
-            if node.expect_symbol(&symbol_kind) {
-                self.cur += 1;
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    }
-
-    fn expect_number(&self) -> bool {
-        if let Some(node) = self.vec.get(self.cur) {
-            node.expect_number()
-        } else {
-            false
-        }
-    }
-
-    fn consume_integer(&mut self) -> Result<Number, ()> {
-        if let Some(node) = self.vec.get(self.cur) {
-            if let Ok(num) = node.get_interger() {
-                self.cur += 1;
-                Ok(num)
-            } else {
-                Err(())
-            }
-        } else {
-            Err(())
         }
     }
 }
 
-pub enum OperationKind {
+#[derive(Debug, Clone)]
+pub enum Operation {
     Add,
     Sub,
-    Mul,
-    Div,
-    Rem,
-    Assign,
 }
 
+#[derive(Debug, Clone)]
 pub enum ASTKind {
     FuncionDeclaration(String),
     FuncionCall(Function),
-    Operation(OperationKind),
+    Operation(Operation),
     LocalVal(LocalVariable),
     GlobalVal(GlobalVariable),
     ImmidiateInterger(Number),
     ImmidiateFloat(Number),
 }
 
+#[derive(Debug)]
 pub struct AST {
     pub kind: ASTKind,
+    pub info: NodeInfo,
     pub type_: Rc<Type>,
     pub left: Option<Box<AST>>,
     pub right: Option<Box<AST>>,
@@ -115,9 +56,10 @@ pub struct AST {
 }
 
 impl AST {
-    fn new_integer_ast(num: Number, type_: Rc<Type>) -> AST {
+    fn new_integer_ast(num: Number, info: NodeInfo, type_: Rc<Type>) -> AST {
         AST {
             kind: ASTKind::ImmidiateInterger(num),
+            info,
             type_,
             left: None,
             right: None,
@@ -127,13 +69,15 @@ impl AST {
     }
 
     fn new_binary_operation_ast(
-        operation: OperationKind,
+        operation: Operation,
+        info: NodeInfo,
         type_: Rc<Type>,
         left: AST,
         right: AST,
     ) -> AST {
         AST {
             kind: ASTKind::Operation(operation),
+            info,
             type_,
             left: Some(Box::new(left)),
             right: Some(Box::new(right)),
@@ -145,11 +89,11 @@ impl AST {
 
 fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
     if nodes.expect_number() {
-        if let Ok(num) = nodes.consume_integer() {
+        if let Ok((num, info)) = nodes.consume_integer() {
             let type_ = definitions.get_primitive_type(&num);
             match num {
                 Number::U64(num_u64) => {
-                    return Ok(AST::new_integer_ast(Number::U64(num_u64), type_));
+                    return Ok(AST::new_integer_ast(Number::U64(num_u64), info, type_));
                 }
                 Number::F64(_num_f64) => Err(()),
             }
@@ -163,24 +107,30 @@ fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, (
 
 // add = num | (+  num| - num)*
 fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> {
-    if let Ok(left_number_ast) = ast_number(nodes, definitions) {
-        let mut operation_kind;
-        let mut add_ast = left_number_ast;
+    if let Ok(left_ast) = ast_number(nodes, definitions) {
+        let mut operation;
+        let mut add_ast = left_ast;
         loop {
-            if nodes.consume_symbol(SymbolKind::Add) {
-                operation_kind = OperationKind::Add;
-            } else if nodes.consume_symbol(SymbolKind::Sub) {
-                operation_kind = OperationKind::Sub;
+            if nodes.expect_symbol(Symbol::Add) {
+                operation = Operation::Add;
+            } else if nodes.expect_symbol(Symbol::Sub) {
+                operation = Operation::Sub;
             } else if nodes.is_empty() {
                 return Ok(add_ast);
             } else {
                 unexpected_node_err(&nodes.get().unwrap().info);
             }
-            if let Ok(right_number_ast) = ast_number(nodes, definitions) {
-                let type_: Rc<Type> =
-                    evaluate_binary_operation_type(&add_ast, &right_number_ast).unwrap();
-                add_ast =
-                    AST::new_binary_operation_ast(operation_kind, type_, add_ast, right_number_ast);
+
+            let add_ast_info = nodes.consume().unwrap();
+            if let Ok(right_ast) = ast_number(nodes, definitions) {
+                let type_: Rc<Type> = evaluate_binary_operation_type(&add_ast, &right_ast).unwrap();
+                add_ast = AST::new_binary_operation_ast(
+                    operation,
+                    add_ast_info,
+                    type_,
+                    add_ast,
+                    right_ast,
+                );
             } else {
                 if nodes.is_empty() {
                     unexpected_end_err(&nodes.get_last().unwrap().info);
@@ -194,8 +144,7 @@ fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> Result<AST, ()> 
     }
 }
 
-pub fn make_asts(node_vec: Vec<Node>) -> Vec<AST> {
-    let mut nodes = Nodes::new(node_vec);
+pub fn make_asts(mut nodes: Nodes) -> Vec<AST> {
     let mut asts: Vec<AST> = vec![];
     let mut programinfo = Definitions::new();
     while nodes.has_node() {

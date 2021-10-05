@@ -35,6 +35,14 @@ fn make_binary(dir: &Path, assembley_path: &Path) {
     assert_eq!(0, sts);
 }
 
+fn do_compile(dir: &Path, source: &Path, output: &Path) {
+    let tokens = compiler::source_tokenizer::tokenize(&source);
+    let nodes = compiler::token_interpreter::make_nodes(tokens);
+    let asts = compiler::ast_maker::make_asts(nodes);
+    compiler::output_assembly::output_assembly(asts, output);
+    make_binary(dir, output);
+}
+
 #[test]
 fn add_test() {
     let dir = Path::new("tests/add");
@@ -45,12 +53,7 @@ fn add_test() {
         .trim()
         .parse::<i32>()
         .unwrap();
-    let tokens = compiler::source_tokenizer::tokenize(&source);
-    let nodes = compiler::token_interpreter::make_nodes(tokens);
-    let asts = compiler::ast_maker::make_asts(nodes);
-    compiler::output_assembly::output_assembly(asts, &output);
-    make_binary(dir, &output);
-
+    do_compile(dir, &source, &output);
     if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
         let result = execute_binary(dir);
         assert_eq!(result, answer);

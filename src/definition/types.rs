@@ -3,6 +3,7 @@ use crate::ast_maker::AST;
 use crate::definition::number::Number;
 use std::{collections::HashMap, marker::PhantomData, rc::Rc};
 
+#[derive(Debug)]
 pub struct SturctMember {
     name: String,
     type_: Rc<Type>,
@@ -17,7 +18,7 @@ impl SturctMember {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum PrimitiveType {
     Void,
     U8,
@@ -32,7 +33,7 @@ pub enum PrimitiveType {
     F64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 // 型定義
 // 配列型でインデックスアクセスを行わない場合はポインタ型に変換されるようにする
 pub struct Type {

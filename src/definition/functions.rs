@@ -1,7 +1,7 @@
 use super::types::Type;
 use std::{collections::HashMap, rc::Rc};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Function {
     args: Rc<Vec<Rc<Type>>>,
     ret: Rc<Type>,

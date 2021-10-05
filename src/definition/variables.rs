@@ -1,19 +1,20 @@
 use crate::definition::types::Type;
 use std::{collections::HashMap, rc::Rc};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GlobalVariable {
     pub name: String,
     pub type_: Rc<Type>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LocalVariable {
     scope_depth: usize,
     pub frame_offset: usize,
     pub type_: Rc<Type>,
 }
 
+#[derive(Debug)]
 pub enum Variable {
     GlobalVal(GlobalVariable),
     LocalVal(LocalVariable),
