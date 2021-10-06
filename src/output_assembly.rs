@@ -14,6 +14,10 @@ fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
     }
 }
 
+fn write_pop_one_value<T: Write>(buf: &mut T) {
+    writeln!(buf, "    pop rax").unwrap();
+}
+
 fn write_pop_two_values<T: Write>(buf: &mut T) {
     writeln!(buf, "    pop rax").unwrap();
     writeln!(buf, "    pop rdi").unwrap();
@@ -29,7 +33,14 @@ fn write_compararison<T: Write>(buf: &mut T, comp: &str) {
     write_pop_two_values(buf);
     writeln!(buf, "    cmp rax, rdi").unwrap();
     writeln!(buf, "    {} al", comp).unwrap();
-    writeln!(buf, "    sete al").unwrap();
+    writeln!(buf, "    movzb rax, al").unwrap();
+    writeln!(buf, "    push rax").unwrap();
+}
+
+fn write_value_compararison<T: Write>(buf: &mut T, comp: &str, num: usize) {
+    write_pop_one_value(buf);
+    writeln!(buf, "    cmp rax, {}", num).unwrap();
+    writeln!(buf, "    {} al", comp).unwrap();
     writeln!(buf, "    movzb rax, al").unwrap();
     writeln!(buf, "    push rax").unwrap();
 }
@@ -110,6 +121,21 @@ fn exetute_comp<T: Write>(ast: &mut AST, buf: &mut T) {
     write_compararison(buf, comparison);
 }
 
+/*
+cmp     DWORD PTR [rbp-20], 0
+        sete    al
+        movzx   eax, al
+*/
+fn exetute_not<T: Write>(ast: &mut AST, buf: &mut T) {
+    match ast.kind {
+        ASTKind::Operation(Operation::Not) => (),
+        _ => unexpected_ast_err(&ast, "operation !".to_string()),
+    }
+
+    output_ast(ast.operand.take().unwrap().as_mut(), buf);
+    write_value_compararison(buf, "sete", 0);
+}
+
 fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
     match &ast.kind {
         ASTKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
@@ -119,6 +145,7 @@ fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
         ASTKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => {
             exetute_comp(ast, buf)
         }
+        ASTKind::Operation(Operation::Not) => exetute_not(ast, buf),
         ASTKind::ImmidiateInterger(_num) => push_number(ast, buf),
         _ => unsupported_ast_err(&ast),
     }

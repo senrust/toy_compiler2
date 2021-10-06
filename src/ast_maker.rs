@@ -43,6 +43,7 @@ pub enum Operation {
     Lt,    // <
     Ge,    // >=
     Le,    // <=
+    Not,   // !
 }
 
 #[derive(Debug, Clone)]
@@ -63,7 +64,7 @@ pub struct AST {
     pub type_: Rc<Type>,
     pub left: Option<Box<AST>>,
     pub right: Option<Box<AST>>,
-    pub child: Option<Box<AST>>,
+    pub operand: Option<Box<AST>>,
     pub other: Option<Vec<Box<AST>>>,
 }
 
@@ -75,7 +76,24 @@ impl AST {
             type_,
             left: None,
             right: None,
-            child: None,
+            operand: None,
+            other: None,
+        }
+    }
+
+    fn new_single_operation_ast(
+        operation: Operation,
+        info: NodeInfo,
+        type_: Rc<Type>,
+        operand: AST,
+    ) -> AST {
+        AST {
+            kind: ASTKind::Operation(operation),
+            info,
+            type_,
+            left: None,
+            right: None,
+            operand: Some(Box::new(operand)),
             other: None,
         }
     }
@@ -93,7 +111,7 @@ impl AST {
             type_,
             left: Some(Box::new(left)),
             right: Some(Box::new(right)),
-            child: None,
+            operand: None,
             other: None,
         }
     }
@@ -130,7 +148,7 @@ fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
-// unary = primary |  + primary |  - primary
+// unary = primary |  + primary |  - primary | ! unary
 fn ast_unary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     if nodes.expect_symbol(Symbol::Add) {
         // drop "+" node
@@ -145,6 +163,14 @@ fn ast_unary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         let sub_ast =
             AST::new_binary_operation_ast(Operation::Sub, sub_info, type_, zero_ast, primary_ast);
         return sub_ast;
+    } else if nodes.expect_symbol(Symbol::Not) {
+        // drop "!" node
+        let not_info = nodes.consume().unwrap();
+        let operand_ast = ast_unary(nodes, definitions);
+        // とりあえず8バイトにしておく
+        let type_ = definitions.get_type("long").unwrap();
+        let not_ast = AST::new_single_operation_ast(Operation::Not, not_info, type_, operand_ast);
+        return not_ast;
     } else {
         return ast_primary(nodes, definitions);
     }

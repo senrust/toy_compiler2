@@ -93,3 +93,8 @@ fn equality_test() {
 fn relational_test() {
     do_test("relational");
 }
+
+#[test]
+fn not_test() {
+    do_test("not");
+}
