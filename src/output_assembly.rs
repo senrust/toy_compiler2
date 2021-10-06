@@ -121,11 +121,6 @@ fn exetute_comp<T: Write>(ast: &mut AST, buf: &mut T) {
     write_compararison(buf, comparison);
 }
 
-/*
-cmp     DWORD PTR [rbp-20], 0
-        sete    al
-        movzx   eax, al
-*/
 fn exetute_not<T: Write>(ast: &mut AST, buf: &mut T) {
     match ast.kind {
         ASTKind::Operation(Operation::Not) => (),
