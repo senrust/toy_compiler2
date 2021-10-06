@@ -88,3 +88,8 @@ fn unary_test() {
 fn equality_test() {
     do_test("equality");
 }
+
+#[test]
+fn relational_test() {
+    do_test("relational");
+}

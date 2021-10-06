@@ -91,3 +91,8 @@ pub fn unexpected_ast_err(ast: &AST, expected_kind: String) -> ! {
     );
     exit(-1);
 }
+
+pub fn unsupported_ast_err(ast: &AST) -> ! {
+    print_ast_error_info(&ast, ASTError::UnSupportedASTKindError(ast.kind.clone()));
+    exit(-1);
+}

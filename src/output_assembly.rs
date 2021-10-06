@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::ast_maker::*;
 use crate::definition::number::Number;
-use crate::error::unexpected_ast_err;
+use crate::error::{unexpected_ast_err, unsupported_ast_err};
 
 fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
     if let ASTKind::ImmidiateInterger(Number::U64(num)) = ast.kind {
@@ -40,7 +40,7 @@ fn exetute_mul<T: Write>(ast: &mut AST, buf: &mut T) {
         output_ast(ast.left.take().unwrap().as_mut(), buf);
         write_operation(buf, "imul");
     } else {
-        unexpected_ast_err(&ast, "operation mul".to_string());
+        unexpected_ast_err(&ast, "operation *".to_string());
     }
 }
 
@@ -53,7 +53,7 @@ fn exetute_div<T: Write>(ast: &mut AST, buf: &mut T) {
         writeln!(buf, "    idiv rdi").unwrap();
         writeln!(buf, "    push rax").unwrap();
     } else {
-        unexpected_ast_err(&ast, "operation div".to_string());
+        unexpected_ast_err(&ast, "operation /".to_string());
     }
 }
 
@@ -64,7 +64,7 @@ fn exetute_add<T: Write>(ast: &mut AST, buf: &mut T) {
     } else if let ASTKind::Operation(Operation::Sub) = ast.kind {
         operation = "sub";
     } else {
-        unexpected_ast_err(&ast, "operation add or sub".to_string());
+        unexpected_ast_err(&ast, "operation + or -".to_string());
     }
 
     output_ast(ast.right.take().unwrap().as_mut(), buf);
@@ -73,13 +73,37 @@ fn exetute_add<T: Write>(ast: &mut AST, buf: &mut T) {
 }
 
 fn exetute_eq<T: Write>(ast: &mut AST, buf: &mut T) {
-    let comparison;
+    let euality;
     if let ASTKind::Operation(Operation::Eq) = ast.kind {
-        comparison = "sete";
+        euality = "sete";
     } else if let ASTKind::Operation(Operation::NotEq) = ast.kind {
-        comparison = "setne";
+        euality = "setne";
     } else {
-        unexpected_ast_err(&ast, "operation eq or noteq".to_string());
+        unexpected_ast_err(&ast, "operation == or !=".to_string());
+    }
+    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    write_compararison(buf, euality);
+}
+
+fn exetute_comp<T: Write>(ast: &mut AST, buf: &mut T) {
+    let comparison;
+    // Gt, Geは右辺と左辺を反転させたLt, Leとして扱う
+    if let ASTKind::Operation(Operation::Gt | Operation::Ge) = ast.kind {
+        std::mem::swap(&mut ast.right, &mut ast.left);
+        if let ASTKind::Operation(Operation::Gt) = ast.kind {
+            ast.kind = ASTKind::Operation(Operation::Lt);
+        } else {
+            ast.kind = ASTKind::Operation(Operation::Le);
+        }
+    }
+
+    if let ASTKind::Operation(Operation::Lt) = ast.kind {
+        comparison = "setl";
+    } else if let ASTKind::Operation(Operation::Le) = ast.kind {
+        comparison = "setle";
+    } else {
+        unexpected_ast_err(&ast, "operation >, <, >= or <=".to_string());
     }
     output_ast(ast.right.take().unwrap().as_mut(), buf);
     output_ast(ast.left.take().unwrap().as_mut(), buf);
@@ -92,8 +116,11 @@ fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
         ASTKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
         ASTKind::Operation(Operation::Div) => exetute_div(ast, buf),
         ASTKind::Operation(Operation::Eq | Operation::NotEq) => exetute_eq(ast, buf),
+        ASTKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => {
+            exetute_comp(ast, buf)
+        }
         ASTKind::ImmidiateInterger(_num) => push_number(ast, buf),
-        _ => unexpected_ast_err(&ast, "unexpected operation".to_string()),
+        _ => unsupported_ast_err(&ast),
     }
 }
 

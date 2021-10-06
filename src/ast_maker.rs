@@ -20,12 +20,12 @@ impl fmt::Display for ASTError {
             ASTError::UnexpecdASTKindError(ast_type, expected_type) => {
                 write!(
                     f,
-                    "unexpected ast kind: {:?}, expexcted: {}",
+                    "unexpected ast kind: {:?}, expexcted type: {}",
                     ast_type, expected_type
                 )
             }
             ASTError::UnSupportedASTKindError(ast_type) => {
-                write!(f, "unsupported ast: {:?}", ast_type,)
+                write!(f, "unsupported ast kind: {:?}", ast_type,)
             }
         }
     }
@@ -37,8 +37,12 @@ pub enum Operation {
     Sub,
     Mul,
     Div,
-    Eq,
-    NotEq,
+    Eq,    // ==
+    NotEq, // !=
+    Gt,    // >
+    Lt,    // <
+    Ge,    // >=
+    Le,    // <=
 }
 
 #[derive(Debug, Clone)]
@@ -188,9 +192,36 @@ fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
-// equality   = add ("==" add | "!=" add)*
-fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+// relational = add (">" add | "<" add | ">=" add| "<=" add)*
+fn ast_relational(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     let left_ast = ast_add(nodes, definitions);
+    let mut operation;
+    let mut relational_ast = left_ast;
+    loop {
+        if nodes.expect_symbol(Symbol::Gt) {
+            operation = Operation::Gt;
+        } else if nodes.expect_symbol(Symbol::Lt) {
+            operation = Operation::Lt;
+        } else if nodes.expect_symbol(Symbol::Ge) {
+            operation = Operation::Ge;
+        } else if nodes.expect_symbol(Symbol::Le) {
+            operation = Operation::Le;
+        } else {
+            return relational_ast;
+        }
+
+        let ast_info = nodes.consume().unwrap();
+        let right_ast = ast_add(nodes, definitions);
+        // とりあえず比較の型は8バイトにしておく
+        let type_: Rc<Type> = definitions.get_type("long").unwrap();
+        relational_ast =
+            AST::new_binary_operation_ast(operation, ast_info, type_, relational_ast, right_ast);
+    }
+}
+
+// equality   = relational ("==" relational | "!=" relational)*
+fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    let left_ast = ast_relational(nodes, definitions);
     let mut operation;
     let mut equality_ast = left_ast;
     loop {
