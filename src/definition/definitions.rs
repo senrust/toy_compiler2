@@ -24,19 +24,19 @@ impl Definitions {
         self.type_.get_primitive_type(&num)
     }
 
-    pub fn get_type(&self, name: &String) -> Result<Rc<Type>, ()> {
+    pub fn get_type(&self, name: &str) -> Result<Rc<Type>, ()> {
         self.type_.get_type(name)
     }
 
-    pub fn define_type(&mut self, name: &String, type_: Rc<Type>) -> Result<(), ()> {
+    pub fn define_type(&mut self, name: &str, type_: Rc<Type>) -> Result<(), ()> {
         self.type_.define_type(name, type_)
     }
 
-    pub fn get_function(&mut self, name: &String) -> Option<Function> {
+    pub fn get_function(&mut self, name: &str) -> Option<Function> {
         self.function.get_function(name)
     }
 
-    pub fn declear_function(&mut self, name: &String, function: Function) -> Result<(), ()> {
+    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<(), ()> {
         self.function.declear_function(name, function)
     }
 

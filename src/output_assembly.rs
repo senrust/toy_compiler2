@@ -14,14 +14,23 @@ fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
     }
 }
 
-fn write_operation_pop<T: Write>(buf: &mut T) {
+fn write_pop_two_values<T: Write>(buf: &mut T) {
     writeln!(buf, "    pop rax").unwrap();
     writeln!(buf, "    pop rdi").unwrap();
 }
 
 fn write_operation<T: Write>(buf: &mut T, ope: &str) {
-    write_operation_pop(buf);
+    write_pop_two_values(buf);
     writeln!(buf, "    {} rax, rdi", ope).unwrap();
+    writeln!(buf, "    push rax").unwrap();
+}
+
+fn write_compararison<T: Write>(buf: &mut T, comp: &str) {
+    write_pop_two_values(buf);
+    writeln!(buf, "    cmp rax, rdi").unwrap();
+    writeln!(buf, "    {} al", comp).unwrap();
+    writeln!(buf, "    sete al").unwrap();
+    writeln!(buf, "    movzb rax, al").unwrap();
     writeln!(buf, "    push rax").unwrap();
 }
 
@@ -39,7 +48,7 @@ fn exetute_div<T: Write>(ast: &mut AST, buf: &mut T) {
     if let ASTKind::Operation(Operation::Div) = ast.kind {
         output_ast(ast.right.take().unwrap().as_mut(), buf);
         output_ast(ast.left.take().unwrap().as_mut(), buf);
-        write_operation_pop(buf);
+        write_pop_two_values(buf);
         writeln!(buf, "    cqo").unwrap();
         writeln!(buf, "    idiv rdi").unwrap();
         writeln!(buf, "    push rax").unwrap();
@@ -63,17 +72,28 @@ fn exetute_add<T: Write>(ast: &mut AST, buf: &mut T) {
     write_operation(buf, operation);
 }
 
-fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
-    if let ASTKind::Operation(Operation::Add | Operation::Sub) = ast.kind {
-        exetute_add(ast, buf);
-    } else if let ASTKind::Operation(Operation::Mul) = ast.kind {
-        exetute_mul(ast, buf);
-    } else if let ASTKind::Operation(Operation::Div) = ast.kind {
-        exetute_div(ast, buf);
-    } else if let ASTKind::ImmidiateInterger(_) = ast.kind {
-        push_number(ast, buf);
+fn exetute_eq<T: Write>(ast: &mut AST, buf: &mut T) {
+    let comparison;
+    if let ASTKind::Operation(Operation::Eq) = ast.kind {
+        comparison = "sete";
+    } else if let ASTKind::Operation(Operation::NotEq) = ast.kind {
+        comparison = "setne";
     } else {
-        unexpected_ast_err(&ast, "operation add or sub".to_string());
+        unexpected_ast_err(&ast, "operation eq or noteq".to_string());
+    }
+    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    write_compararison(buf, comparison);
+}
+
+fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
+    match &ast.kind {
+        ASTKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
+        ASTKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
+        ASTKind::Operation(Operation::Div) => exetute_div(ast, buf),
+        ASTKind::Operation(Operation::Eq | Operation::NotEq) => exetute_eq(ast, buf),
+        ASTKind::ImmidiateInterger(_num) => push_number(ast, buf),
+        _ => unexpected_ast_err(&ast, "unexpected operation".to_string()),
     }
 }
 

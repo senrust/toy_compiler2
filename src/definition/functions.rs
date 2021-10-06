@@ -47,7 +47,7 @@ impl FunctionDefinitions {
         }
     }
 
-    pub fn get_function(&mut self, name: &String) -> Option<Function> {
+    pub fn get_function(&mut self, name: &str) -> Option<Function> {
         if let Some(function) = self.dict.get(name) {
             Some(function.clone())
         } else {
@@ -55,7 +55,7 @@ impl FunctionDefinitions {
         }
     }
 
-    pub fn declear_function(&mut self, name: &String, function: Function) -> Result<(), ()> {
+    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<(), ()> {
         // 同じ関数の複数回宣言は許可する
         if let Some(exist_function) = self.dict.get(name) {
             if *exist_function == function {
@@ -64,7 +64,7 @@ impl FunctionDefinitions {
                 Err(())
             }
         } else {
-            self.dict.insert(name.clone(), function);
+            self.dict.insert(name.to_string(), function);
             Ok(())
         }
     }

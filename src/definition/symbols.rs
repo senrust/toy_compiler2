@@ -1,50 +1,49 @@
 #[derive(Debug, PartialEq, Eq)]
 pub enum Symbol {
-    Period,
-    Comma,
-    Colon,
-    SemiColon,
-    Assign,
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Rem,
-    BitNot,
-    BitAnd,
-    BitOr,
-    BitXor,
-    LeftShift,
-    RightShift,
-    Not,
-    And,
-    Or,
-    Eq,
-    NotEq,
-    Gt,
-    Lt,
-    Ge,
-    Le,
-    Increment,
-    Decrement,
-    AddAssign,
-    SubAssign,
-    MulAssign,
-    DivAssign,
-    RemAssign,
-    LeftShiftAssign,
-    RightShiftAssign,
-    AndAssign,
-    OrAssign,
-    XorAssign,
+    Period,             // .
+    Comma,              // ,
+    Colon,              // :
+    SemiColon,          // ;
+    Assign,             // =
+    Add,                // +
+    Sub,                // -
+    Mul,                // *
+    Div,                // /
+    Rem,                // %
+    BitNot,             // !
+    BitAnd,             // &
+    BitOr,              // |
+    BitXor,             // ^
+    LeftShift,          // >
+    RightShift,         // <<
+    Not,                // !
+    And,                // &&
+    Or,                 // ||
+    Eq,                 // ==
+    NotEq,              // !=
+    Gt,                 // >
+    Lt,                 // <
+    Ge,                 // >=
+    Le,                 // <=
+    Increment,          // ++
+    Decrement,          // --
+    AddAssign,          // +=
+    SubAssign,          // -=
+    MulAssign,          // *=
+    DivAssign,          // /=
+    RemAssign,          // %=
+    LeftShiftAssign,    // <<=
+    RightShiftAssign,   // >>=
+    AndAssign,          // &=
+    OrAssign,           // |=
+    XorAssign,          // ^=
     LeftParenthesis,    // (
     RightParenthesis,   // )
     LeftSquareBracket,  // [
     RightSquareBracket, // ]
     LeftCurlyBracket,   // {
     RightCurlyBracket,  // }
-    Reference,
-    Sharp,
+    Deref,              // ->
 }
 
 pub fn get_token_symbol(token: String) -> Symbol {
@@ -70,10 +69,10 @@ pub fn get_token_symbol(token: String) -> Symbol {
         "||" => Symbol::Or,
         "==" => Symbol::Eq,
         "!=" => Symbol::NotEq,
-        "<" => Symbol::Gt,
-        ">" => Symbol::Lt,
-        "<=" => Symbol::Ge,
-        ">=" => Symbol::Le,
+        ">" => Symbol::Gt,
+        "<" => Symbol::Lt,
+        ">=" => Symbol::Ge,
+        "<=" => Symbol::Le,
         "++" => Symbol::Increment,
         "--" => Symbol::Decrement,
         "+=" => Symbol::AddAssign,
@@ -92,8 +91,7 @@ pub fn get_token_symbol(token: String) -> Symbol {
         "]" => Symbol::RightSquareBracket,
         "{" => Symbol::LeftCurlyBracket,
         "}" => Symbol::RightCurlyBracket,
-        "->" => Symbol::Reference,
-        "#" => Symbol::Sharp,
+        "->" => Symbol::Deref,
         _ => unreachable!(),
     }
 }

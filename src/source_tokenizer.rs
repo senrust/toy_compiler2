@@ -35,8 +35,8 @@ macro_rules! symbols_without_dot_or_space {
 macro_rules! twochars_symbol_array {
     () => {
         [
-            "<<", ">>", "++", "--", "==", "||", "&&", "+=", "-=", "*=", "/=", "%=", "&=", "^=",
-            "|=", "->",
+            "<<", ">>", "++", "--", "==", "!=", "||", "&&", "+=", "-=", "*=", "/=", "%=", "&=",
+            "^=", "|=", "->",
         ]
     };
 }
@@ -363,7 +363,10 @@ fn get_quote_text(
 }
 
 pub fn tokenize(filepath: &Path) -> Vec<Token> {
-    let file = File::open(filepath).unwrap();
+    let file = File::open(filepath).expect(&format!(
+        "error : not suh file {}",
+        filepath.to_str().unwrap()
+    ));
     let reader = BufReader::new(file);
 
     let mut tokens: Vec<Token> = vec![];

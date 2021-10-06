@@ -83,3 +83,8 @@ fn parenthesis_test() {
 fn unary_test() {
     do_test("unary");
 }
+
+#[test]
+fn equality_test() {
+    do_test("equality");
+}

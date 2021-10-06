@@ -139,7 +139,6 @@ impl Node {
 pub enum NodeError {
     NotValueError,
     UnexpectNodeError,
-    UnexpectEndError,
     InvalidNumberErr(String),
 }
 
@@ -151,9 +150,6 @@ impl fmt::Display for NodeError {
             }
             NodeError::UnexpectNodeError => {
                 write!(f, "unexpected token")
-            }
-            NodeError::UnexpectEndError => {
-                write!(f, "unexpected end")
             }
             NodeError::InvalidNumberErr(str) => {
                 write!(f, "{} is invalid number", str)

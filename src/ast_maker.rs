@@ -37,6 +37,8 @@ pub enum Operation {
     Sub,
     Mul,
     Div,
+    Eq,
+    NotEq,
 }
 
 #[derive(Debug, Clone)]
@@ -111,7 +113,7 @@ fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     } else if nodes.expect_symbol(Symbol::LeftParenthesis) {
         // drop "(" node
         nodes.consume().unwrap();
-        let add_ast = ast_add(nodes, definitions);
+        let add_ast = ast_equality(nodes, definitions);
         if nodes.expect_symbol(Symbol::RightParenthesis) {
             // drop ")" node
             nodes.consume().unwrap();
@@ -186,11 +188,34 @@ fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
+// equality   = add ("==" add | "!=" add)*
+fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    let left_ast = ast_add(nodes, definitions);
+    let mut operation;
+    let mut equality_ast = left_ast;
+    loop {
+        if nodes.expect_symbol(Symbol::Eq) {
+            operation = Operation::Eq;
+        } else if nodes.expect_symbol(Symbol::NotEq) {
+            operation = Operation::NotEq;
+        } else {
+            return equality_ast;
+        }
+
+        let ast_info = nodes.consume().unwrap();
+        let right_ast = ast_add(nodes, definitions);
+        // とりあえず比較の型は8バイトにしておく
+        let type_: Rc<Type> = definitions.get_type("long").unwrap();
+        equality_ast =
+            AST::new_binary_operation_ast(operation, ast_info, type_, equality_ast, right_ast);
+    }
+}
+
 pub fn make_asts(mut nodes: Nodes) -> Vec<AST> {
     let mut asts: Vec<AST> = vec![];
     let mut programinfo = Definitions::new();
     while nodes.has_node() {
-        let ast = ast_add(&mut nodes, &mut programinfo);
+        let ast = ast_equality(&mut nodes, &mut programinfo);
         asts.push(ast);
     }
     asts

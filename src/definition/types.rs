@@ -256,7 +256,7 @@ impl TypesDefinitions {
         }
     }
 
-    pub fn get_type(&self, name: &String) -> Result<Rc<Type>, ()> {
+    pub fn get_type(&self, name: &str) -> Result<Rc<Type>, ()> {
         if self.dict.contains_key(name) {
             Ok(self.dict.get(name).unwrap().clone())
         } else {
@@ -264,11 +264,11 @@ impl TypesDefinitions {
         }
     }
 
-    pub fn define_type(&mut self, name: &String, type_: Rc<Type>) -> Result<(), ()> {
+    pub fn define_type(&mut self, name: &str, type_: Rc<Type>) -> Result<(), ()> {
         if self.dict.contains_key(name) {
             Err(())
         } else {
-            self.dict.insert(name.clone(), type_);
+            self.dict.insert(name.to_string(), type_);
             Ok(())
         }
     }

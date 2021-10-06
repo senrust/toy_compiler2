@@ -53,12 +53,6 @@ fn unexpected_node_err(info: &NodeInfo) -> ! {
     exit(-1);
 }
 
-fn unexpected_end_err(last_info: &NodeInfo) -> ! {
-    let last_info = NodeInfo::new(last_info.line, last_info.pos + last_info.width, 0);
-    print_node_error_info(NodeError::UnexpectEndError, &last_info);
-    exit(-1);
-}
-
 pub fn exit_no_token_err() -> ! {
     eprintln!("no valid token");
     exit(-1);
@@ -67,7 +61,7 @@ pub fn exit_no_token_err() -> ! {
 pub fn output_unexpected_node_err(nodes: &Nodes) -> ! {
     // nodesが何もないときはnodes作成時にerrorとするのでunwrap可能
     let err_node = nodes.get().unwrap();
-    unexpected_end_err(&err_node.info);
+    unexpected_node_err(&err_node.info);
 }
 
 fn print_ast_error_info(ast: &AST, err: ASTError) {
