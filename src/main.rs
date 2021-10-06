@@ -15,6 +15,10 @@ use token_interpreter::make_nodes;
 static mut SOURCE_TXT: Vec<String> = vec![];
 fn main() {
     let args = env::args().collect::<Vec<String>>();
+    if args.len() == 1 {
+        eprintln!("error: no input files");
+        std::process::exit(-1);
+    }
     for arg in args.iter().skip(1) {
         let path = Path::new(arg);
         let tokens = tokenize(path);

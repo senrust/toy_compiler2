@@ -54,7 +54,7 @@ fn unexpected_node_err(info: &NodeInfo) -> ! {
 }
 
 pub fn exit_no_token_err() -> ! {
-    eprintln!("no valid token");
+    eprintln!("error: no valid token");
     exit(-1);
 }
 

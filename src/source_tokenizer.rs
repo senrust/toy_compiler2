@@ -363,12 +363,15 @@ fn get_quote_text(
 }
 
 pub fn tokenize(filepath: &Path) -> Vec<Token> {
-    let file = File::open(filepath).expect(&format!(
-        "error : not suh file {}",
-        filepath.to_str().unwrap()
-    ));
-    let reader = BufReader::new(file);
+    let file;
+    if let Ok(fd) = File::open(filepath) {
+        file = fd;
+    } else {
+        eprintln!("error: no such file {}",filepath.to_str().unwrap());
+        std::process::exit(-1);
+    }
 
+    let reader = BufReader::new(file);
     let mut tokens: Vec<Token> = vec![];
     let mut token_chars: Vec<char> = vec![];
     let mut tokenize_state = TokenizeInfo::new();
