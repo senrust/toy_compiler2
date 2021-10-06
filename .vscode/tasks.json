@@ -14,6 +14,18 @@
 				"--nocapture",
 				"--test-threads=1",
             ]
+        },
+        {
+            "label": "cargo run",
+            "type": "shell",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "command": "cargo",
+            "args": [
+                "run",
+                "test",
+            ]
         }
     ]
 }

@@ -37,12 +37,12 @@ pub enum Symbol {
     AndAssign,
     OrAssign,
     XorAssign,
-    LeftParenthesis,        // (    
-    RightParenthesis,       // )
-    LeftSquareBracket,      // [
-    RightSquareBracket,     // ]
-    LeftCurlyBracket,       // {
-    RightCurlyBracket,      // }
+    LeftParenthesis,    // (
+    RightParenthesis,   // )
+    LeftSquareBracket,  // [
+    RightSquareBracket, // ]
+    LeftCurlyBracket,   // {
+    RightCurlyBracket,  // }
     Reference,
     Sharp,
 }

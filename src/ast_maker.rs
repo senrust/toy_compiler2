@@ -117,16 +117,36 @@ fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
             nodes.consume().unwrap();
             return add_ast;
         } else {
-            nodes.output_unexpected_node_err();
+            output_unexpected_node_err(nodes);
         }
     } else {
-        nodes.output_unexpected_node_err();
+        output_unexpected_node_err(nodes);
     }
 }
 
-// mul = primary | (* primary | / primary)*
+// unary = primary |  + primary |  - primary
+fn ast_unary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    if nodes.expect_symbol(Symbol::Add) {
+        // drop "+" node
+        nodes.consume().unwrap();
+        return ast_primary(nodes, definitions);
+    } else if nodes.expect_symbol(Symbol::Sub) {
+        // drop "-" node
+        let sub_info = nodes.consume().unwrap();
+        let primary_ast = ast_primary(nodes, definitions);
+        let type_ = primary_ast.type_.clone();
+        let zero_ast = AST::new_integer_ast(Number::U64(0), sub_info.clone(), type_.clone());
+        let sub_ast =
+            AST::new_binary_operation_ast(Operation::Sub, sub_info, type_, zero_ast, primary_ast);
+        return sub_ast;
+    } else {
+        return ast_primary(nodes, definitions);
+    }
+}
+
+// mul = unary | (* unary | / unary)*
 fn ast_mul(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
-    let left_ast = ast_primary(nodes, definitions);
+    let left_ast = ast_unary(nodes, definitions);
     let mut operation;
     let mut mul_ast = left_ast;
     loop {
@@ -139,7 +159,7 @@ fn ast_mul(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         }
 
         let ast_info = nodes.consume().unwrap();
-        let right_ast = ast_primary(nodes, definitions);
+        let right_ast = ast_unary(nodes, definitions);
         let type_: Rc<Type> = evaluate_binary_operation_type(&mul_ast, &right_ast).unwrap();
         mul_ast = AST::new_binary_operation_ast(operation, ast_info, type_, mul_ast, right_ast);
     }

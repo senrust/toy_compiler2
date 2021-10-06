@@ -2,7 +2,7 @@ use std::process::exit;
 
 use crate::ast_maker::{ASTError, AST};
 use crate::source_tokenizer::{TokenizeError, TokenizeInfo};
-use crate::token_interpreter::{NodeError, NodeInfo};
+use crate::token_interpreter::{NodeError, NodeInfo, Nodes};
 
 use crate::SOURCE_TXT;
 
@@ -16,7 +16,7 @@ fn get_token(info: &NodeInfo) -> String {
 }
 
 // トークン化に失敗した行とそのトークンを表示して終了する
-pub fn tokenizer_error(err: TokenizeError, info: &TokenizeInfo) -> ! {
+pub fn exit_tokenizer_error(err: TokenizeError, info: &TokenizeInfo) -> ! {
     let error_line;
     unsafe {
         error_line = &SOURCE_TXT[info.line];
@@ -48,20 +48,26 @@ pub fn invalidnumber_node_err(info: &NodeInfo) -> ! {
     exit(-1);
 }
 
-pub fn unexpected_node_err(info: &NodeInfo) -> ! {
+fn unexpected_node_err(info: &NodeInfo) -> ! {
     print_node_error_info(NodeError::UnexpectNodeError, info);
     exit(-1);
 }
 
-pub fn unexpected_end_err(last_info: &NodeInfo) -> ! {
+fn unexpected_end_err(last_info: &NodeInfo) -> ! {
     let last_info = NodeInfo::new(last_info.line, last_info.pos + last_info.width, 0);
     print_node_error_info(NodeError::UnexpectEndError, &last_info);
     exit(-1);
 }
 
-pub fn no_token_err() -> ! {
+pub fn exit_no_token_err() -> ! {
     eprintln!("no valid token");
     exit(-1);
+}
+
+pub fn output_unexpected_node_err(nodes: &Nodes) -> ! {
+    // nodesが何もないときはnodes作成時にerrorとするのでunwrap可能
+    let err_node = nodes.get().unwrap();
+    unexpected_end_err(&err_node.info);
 }
 
 fn print_ast_error_info(ast: &AST, err: ASTError) {

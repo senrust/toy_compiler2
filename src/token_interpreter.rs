@@ -1,6 +1,5 @@
 use crate::definition::number::{string_to_number, Number};
 use crate::definition::symbols::{get_token_symbol, Symbol};
-use crate::error::*;
 use crate::source_tokenizer::{Token, TokenKind};
 use std::fmt;
 
@@ -252,19 +251,6 @@ impl Nodes {
             }
         } else {
             Err(())
-        }
-    }
-
-    pub fn output_unexpected_node_err(&self)  -> !{
-        if let Some(err_node) = self.get() {
-            unexpected_node_err(&err_node.info);
-        } else {
-            // 何もトークンが無い場合
-            if let Some(last_node) = self.get_last() {
-                unexpected_end_err(&last_node.info);
-            } else {
-                no_token_err();
-            }
         }
     }
 }

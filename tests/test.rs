@@ -43,7 +43,7 @@ fn do_compile(dir: &Path, source: &Path, output: &Path) {
     make_binary(dir, output);
 }
 
-fn get_test_parameter(test_type: &str) -> (PathBuf, PathBuf, PathBuf, i32){
+fn get_test_parameter(test_type: &str) -> (PathBuf, PathBuf, PathBuf, i32) {
     let dir = Path::new("tests").join(test_type);
     let source = dir.join(format!("{}.test", test_type));
     let output = dir.join("tmp.s");
@@ -77,4 +77,9 @@ fn mul_test() {
 #[test]
 fn parenthesis_test() {
     do_test("parenthesis");
+}
+
+#[test]
+fn unary_test() {
+    do_test("unary");
 }

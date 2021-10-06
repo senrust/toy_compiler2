@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use crate::error::tokenizer_error;
+use crate::error::{exit_no_token_err, exit_tokenizer_error};
 use crate::SOURCE_TXT;
 
 macro_rules! symbols_without_dot_or_space {
@@ -392,7 +392,7 @@ pub fn tokenize(filepath: &Path) -> Vec<Token> {
                         }
                         Err(()) => {
                             let err_token = token_chars.iter().collect::<String>();
-                            tokenizer_error(
+                            exit_tokenizer_error(
                                 TokenizeError::InvalidIdentifiler(err_token),
                                 &tokenize_state,
                             );
@@ -416,7 +416,7 @@ pub fn tokenize(filepath: &Path) -> Vec<Token> {
                     }
                     Err(()) => {
                         let err_token = token_chars.iter().collect::<String>();
-                        tokenizer_error(
+                        exit_tokenizer_error(
                             TokenizeError::InvalidIdentifiler(err_token),
                             &tokenize_state,
                         );
@@ -433,7 +433,7 @@ pub fn tokenize(filepath: &Path) -> Vec<Token> {
                             }
                         }
                         Err(()) => {
-                            tokenizer_error(TokenizeError::UnClosedError, &tokenize_state);
+                            exit_tokenizer_error(TokenizeError::UnClosedError, &tokenize_state);
                         }
                     }
                 }
@@ -453,7 +453,7 @@ pub fn tokenize(filepath: &Path) -> Vec<Token> {
                         }
                         Err(()) => {
                             let err_token = token_chars.iter().collect::<String>();
-                            tokenizer_error(
+                            exit_tokenizer_error(
                                 TokenizeError::InvalidIdentifiler(err_token),
                                 &tokenize_state,
                             );
@@ -490,7 +490,12 @@ pub fn tokenize(filepath: &Path) -> Vec<Token> {
 
     // ファイル端で未トークン化があればエラーとする
     if tokenize_state.state != TokenState::Empty {
-        tokenizer_error(TokenizeError::UnClosedError, &tokenize_state);
+        exit_tokenizer_error(TokenizeError::UnClosedError, &tokenize_state);
+    }
+
+    // トークンが1つもない場合はエラーとする
+    if tokens.is_empty() {
+        exit_no_token_err();
     }
     tokens
 }
