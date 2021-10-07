@@ -98,3 +98,10 @@ fn relational_test() {
 fn not_test() {
     do_test("not");
 }
+
+#[test]
+fn variable_test() {
+    // 未初期化のローカル変数を使うのでコンパイルのみ行う
+    let (dir, source, output, _answer) = get_test_parameter("variable");
+    do_compile(&dir, &source, &output);
+}

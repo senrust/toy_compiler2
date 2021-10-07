@@ -18,7 +18,7 @@ impl SturctMember {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]
 pub enum PrimitiveType {
     Void,
     U8,
@@ -33,7 +33,7 @@ pub enum PrimitiveType {
     F64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 // 型定義
 // 配列型でインデックスアクセスを行わない場合はポインタ型に変換されるようにする
 pub struct Type {
@@ -83,6 +83,8 @@ impl PartialEq for Type {
         }
 
         // お互いに構造体型の場合
+        // 同じ構造体名であれば良い
+        // 無名構造体の比較は関数の引数チェックでは行われない
         if self.struct_name.is_some() && self.struct_name.is_some() {
             if self.struct_name.as_ref().unwrap() == rhs.struct_name.as_ref().unwrap() {
                 return true;
@@ -181,7 +183,7 @@ impl Type {
     // サイズ8バイトで定義する
     // asigneeが関数型のときに正しい関数ポインタ定義かチェックする
     // (これで良いかはわからない)
-    pub fn new_fucntion(function: Function) -> Self {
+    pub fn new_fucntion(function: Rc<Function>) -> Self {
         Type {
             size: 8,
             primitive: None,
@@ -189,7 +191,7 @@ impl Type {
             array: None,
             struct_name: None,
             struct_members: None,
-            function: Some(Rc::new(function)),
+            function: Some(function),
             _private: PhantomData,
         }
     }
@@ -264,12 +266,13 @@ impl TypesDefinitions {
         }
     }
 
-    pub fn define_type(&mut self, name: &str, type_: Rc<Type>) -> Result<(), ()> {
+    pub fn define_type(&mut self, name: &str, type_: Type) -> Result<Rc<Type>, ()> {
         if self.dict.contains_key(name) {
             Err(())
         } else {
-            self.dict.insert(name.to_string(), type_);
-            Ok(())
+            let defined_type = Rc::new(type_);
+            self.dict.insert(name.to_string(), defined_type.clone());
+            Ok(defined_type)
         }
     }
 }

@@ -137,7 +137,6 @@ impl Node {
 }
 
 pub enum NodeError {
-    NotValueError,
     UnexpectNodeError,
     InvalidNumberErr(String),
 }
@@ -145,9 +144,6 @@ pub enum NodeError {
 impl fmt::Display for NodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            NodeError::NotValueError => {
-                write!(f, "value is expected")
-            }
             NodeError::UnexpectNodeError => {
                 write!(f, "unexpected token")
             }
@@ -182,18 +178,6 @@ impl Nodes {
 
     pub fn get(&self) -> Option<&Node> {
         self.vec.get(self.cur)
-    }
-
-    pub fn get_last(&self) -> Option<&Node> {
-        self.vec.last()
-    }
-
-    pub fn proceed(&mut self) {
-        self.cur += 1;
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.cur >= self.vec.len()
     }
 
     pub fn has_node(&self) -> bool {
@@ -242,6 +226,31 @@ impl Nodes {
             if let Ok(num) = node.get_interger() {
                 self.cur += 1;
                 Ok((num, node.info.clone()))
+            } else {
+                Err(())
+            }
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn expect_identifier(&mut self) -> bool {
+        if let Some(node) = self.vec.get(self.cur) {
+            if node.expect_identifier() {
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    pub fn consume_identifier(&mut self) -> Result<(String, NodeInfo), ()> {
+        if let Some(node) = self.vec.get(self.cur) {
+            if let Ok(ident) = node.get_identifier() {
+                self.cur += 1;
+                Ok((ident.clone(), node.info.clone()))
             } else {
                 Err(())
             }

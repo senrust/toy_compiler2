@@ -28,31 +28,32 @@ impl Definitions {
         self.type_.get_type(name)
     }
 
-    pub fn define_type(&mut self, name: &str, type_: Rc<Type>) -> Result<(), ()> {
+    pub fn define_type(&mut self, name: &str, type_: Type) -> Result<Rc<Type>, ()> {
         self.type_.define_type(name, type_)
     }
 
-    pub fn get_function(&mut self, name: &str) -> Option<Function> {
+    pub fn get_function(&mut self, name: &str) -> Option<Rc<Function>> {
         self.function.get_function(name)
     }
 
-    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<(), ()> {
-        self.function.declear_function(name, function)
+    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Rc<Type>, ()> {
+        if let Ok(func) = self.function.declear_function(name, function) {
+            let func_type = Type::new_fucntion(func);
+            Ok(Rc::new(func_type))
+        } else {
+            Err(())
+        }
     }
 
-    pub fn declear_global_val(&mut self, name: String, type_: Rc<Type>) {
+    pub fn declear_global_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
         self.variable.declear_global_val(name, type_)
     }
 
-    pub fn declear_local_val(&mut self, name: String, type_: Rc<Type>) -> Result<(), ()> {
+    pub fn declear_local_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
         self.variable.declear_local_val(name, type_)
     }
 
-    pub fn get_local_frame_size(&self) -> usize {
-        self.variable.get_local_frame_size()
-    }
-
-    pub fn get_variable(&self, name: &String) -> Option<Variable> {
+    pub fn get_variable(&self, name: &str) -> Option<Variable> {
         self.variable.get_variable(name)
     }
 
@@ -62,5 +63,13 @@ impl Definitions {
 
     pub fn exit_local_scope(&mut self) {
         self.variable.exit_local_scope()
+    }
+
+    pub fn get_local_val_frame_size(&self) -> usize {
+        self.variable.get_local_val_frame_size()
+    }
+
+    pub fn clear_local_val_scope(&mut self) {
+        self.variable.clear_local_val_scope()
     }
 }

@@ -1,16 +1,18 @@
 use super::types::Type;
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, ops::Deref, rc::Rc};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Function {
-    args: Rc<Vec<Rc<Type>>>,
-    ret: Rc<Type>,
+    name: String,
+    args: Option<Vec<Rc<Type>>>,
+    ret: Option<Rc<Type>>,
 }
 
 impl Function {
-    fn new(args: Vec<Rc<Type>>, ret: Rc<Type>) -> Self {
+    pub fn new(name: &str, args: Option<Vec<Rc<Type>>>, ret: Option<Rc<Type>>) -> Self {
         Function {
-            args: Rc::new(args),
+            name: name.to_string(),
+            args,
             ret,
         }
     }
@@ -18,26 +20,36 @@ impl Function {
 
 impl PartialEq for Function {
     fn eq(&self, rhs: &Self) -> bool {
-        // 引数の数が異なる
-        if self.args.len() != rhs.args.len() {
+        if self.name != rhs.name {
             return false;
         }
 
-        for (self_arg, rhs_arg) in self.args.iter().zip(rhs.args.iter()) {
-            if self_arg != rhs_arg {
+        // 引数の数が異なる
+        if self.args.is_some() && rhs.args.is_some() {
+            let self_args = self.args.as_ref().unwrap();
+            let rhs_args = rhs.args.as_ref().unwrap();
+            if self_args.len() != rhs_args.len() {
                 return false;
+            }
+
+            for (self_arg, rhs_arg) in self_args.iter().zip(rhs_args.iter()) {
+                if *self_arg.deref() != *rhs_arg.deref() {
+                    return false;
+                }
             }
         }
 
-        if self.ret != rhs.ret {
-            return false;
+        if self.ret.is_some() && rhs.ret.is_some() {
+            if self.ret.as_ref().unwrap() != rhs.ret.as_ref().unwrap() {
+                return false;
+            }
         }
         true
     }
 }
 
 pub struct FunctionDefinitions {
-    pub dict: HashMap<String, Function>,
+    pub dict: HashMap<String, Rc<Function>>,
 }
 
 impl FunctionDefinitions {
@@ -47,7 +59,7 @@ impl FunctionDefinitions {
         }
     }
 
-    pub fn get_function(&mut self, name: &str) -> Option<Function> {
+    pub fn get_function(&mut self, name: &str) -> Option<Rc<Function>> {
         if let Some(function) = self.dict.get(name) {
             Some(function.clone())
         } else {
@@ -55,17 +67,17 @@ impl FunctionDefinitions {
         }
     }
 
-    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<(), ()> {
+    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Rc<Function>, ()> {
         // 同じ関数の複数回宣言は許可する
         if let Some(exist_function) = self.dict.get(name) {
-            if *exist_function == function {
-                Ok(())
+            if *exist_function.deref() == function {
+                Ok(exist_function.clone())
             } else {
                 Err(())
             }
         } else {
-            self.dict.insert(name.to_string(), function);
-            Ok(())
+            self.dict.insert(name.to_string(), Rc::new(function));
+            Ok(self.dict.get(name).unwrap().clone())
         }
     }
 }

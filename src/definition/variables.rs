@@ -1,23 +1,33 @@
 use crate::definition::types::Type;
 use std::{collections::HashMap, rc::Rc};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct GlobalVariable {
     pub name: String,
     pub type_: Rc<Type>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct LocalVariable {
     scope_depth: usize,
+    pub name: String,
     pub frame_offset: usize,
     pub type_: Rc<Type>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Variable {
-    GlobalVal(GlobalVariable),
-    LocalVal(LocalVariable),
+    GlobalVal(Rc<GlobalVariable>),
+    LocalVal(Rc<LocalVariable>),
+}
+
+impl Variable {
+    pub fn get_type(&self) -> Rc<Type> {
+        match self {
+            Variable::GlobalVal(global_val) => global_val.type_.clone(),
+            Variable::LocalVal(local_val) => local_val.type_.clone(),
+        }
+    }
 }
 
 struct LocalScope {
@@ -32,12 +42,13 @@ struct LocalScope {
 /// 宣言済みのローカル変数を退避させるためのテーブル  
 /// キーが変数名, 値が退避ローカル変数ベクトル(ベクトル後方ほど深いスコープで宣言された退避ローカル変数)
 pub struct VariableDeclearations {
-    global_vals: HashMap<String, Rc<Type>>,
-    local_vals: HashMap<String, LocalVariable>,
+    global_vals: HashMap<String, Rc<GlobalVariable>>,
+    local_vals: HashMap<String, Rc<LocalVariable>>,
     local_scopes: Vec<LocalScope>,
-    local_frame_size: usize,
+    current_frame_offset: usize,
+    max_frame_offset: usize,
     local_scope_depth: usize,
-    hidden_local: HashMap<String, Vec<LocalVariable>>,
+    hidden_local: HashMap<String, Vec<Rc<LocalVariable>>>,
 }
 
 impl VariableDeclearations {
@@ -46,32 +57,47 @@ impl VariableDeclearations {
             global_vals: HashMap::new(),
             local_vals: HashMap::new(),
             local_scopes: vec![],
-            local_frame_size: 0,
+            current_frame_offset: 8, // rbp分加わる
+            max_frame_offset: 8,     // rbp分加わる
             local_scope_depth: 0,
             hidden_local: HashMap::new(),
         }
     }
 
+    pub fn get_local_val_frame_size(&self) -> usize {
+        self.max_frame_offset
+    }
+
     // グローバル変数を宣言
-    pub fn declear_global_val(&mut self, name: String, type_: Rc<Type>) {
-        self.global_vals.insert(name, type_);
+    pub fn declear_global_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
+        if let Some(_) = self.global_vals.get(name) {
+            return Err(());
+        }
+        let new_globalval = Rc::new(GlobalVariable {
+            name: name.to_string(),
+            type_,
+        });
+        self.global_vals.insert(name.to_string(), new_globalval);
+        Ok(Variable::GlobalVal(
+            self.global_vals.get(name).unwrap().clone(),
+        ))
     }
 
     // ローカル変数を現在のスコープで宣言
-    pub fn declear_local_val(&mut self, name: String, type_: Rc<Type>) -> Result<(), ()> {
+    pub fn declear_local_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
         // すでに同じローカル変数名が登録されている場合はそのローカル変数をhidden_localに対比させる
-        if let Some(same_name_val) = self.local_vals.remove(&name) {
+        if let Some(same_name_val) = self.local_vals.remove(name) {
             // 現在のスコープですでに宣言されている場合はエラー
             if self.local_scope_depth == same_name_val.scope_depth {
                 return Err(());
             } else {
                 // すでに同じ変数名が複数宣言され, 秘匿済みの場合
-                if let Some(same_name_vals) = self.hidden_local.get_mut(&name) {
+                if let Some(same_name_vals) = self.hidden_local.get_mut(name) {
                     // 新たに追加するローカル変数のスコープを抜けたら再度追加できるように最後尾に追加しする
                     same_name_vals.push(same_name_val);
                 } else {
                     let hidden_vec = vec![same_name_val];
-                    self.hidden_local.insert(name.clone(), hidden_vec);
+                    self.hidden_local.insert(name.to_string(), hidden_vec);
                 }
             }
         }
@@ -79,9 +105,9 @@ impl VariableDeclearations {
         // ローカル変数をスタックに追加すると8バイトアライメントを超えてしまう場合は,
         // スタックフレームをアライメント境界まで増やしてからローカル変数を追加する
         // すでにアライメント境界のときは何もしない
-        if self.local_frame_size % 8 != 0 {
-            if self.local_frame_size / 8 != (self.local_frame_size + type_.size) / 8 {
-                self.local_frame_size += 8 - (self.local_frame_size % 8);
+        if self.current_frame_offset % 8 != 0 {
+            if self.current_frame_offset / 8 != (self.current_frame_offset + type_.size) / 8 {
+                self.current_frame_offset += 8 - (self.current_frame_offset % 8);
             }
         }
 
@@ -89,32 +115,27 @@ impl VariableDeclearations {
         let val_size = type_.size;
         self.local_scopes[self.local_scope_depth]
             .scope_val_names
-            .push(name.clone());
+            .push(name.to_string());
         let local_val = LocalVariable {
             scope_depth: self.local_scope_depth,
-            frame_offset: self.local_frame_size,
+            name: name.to_string(),
+            frame_offset: self.current_frame_offset,
             type_,
         };
-        self.local_vals.insert(name, local_val);
-        self.local_frame_size += val_size;
-        Ok(())
-    }
-
-    // 使用中のローカル変数スタックサイズを取得
-    pub fn get_local_frame_size(&self) -> usize {
-        self.local_frame_size
+        self.local_vals.insert(name.to_string(), Rc::new(local_val));
+        self.current_frame_offset += val_size;
+        self.max_frame_offset = std::cmp::max(self.max_frame_offset, self.current_frame_offset);
+        Ok(Variable::LocalVal(
+            self.local_vals.get(name).unwrap().clone(),
+        ))
     }
 
     // 変数を取得
-    pub fn get_variable(&self, name: &String) -> Option<Variable> {
+    pub fn get_variable(&self, name: &str) -> Option<Variable> {
         if let Some(local_val) = self.local_vals.get(name) {
             Some(Variable::LocalVal(local_val.clone()))
-        } else if let Some(global_val_type) = self.global_vals.get(name) {
-            let global_val = GlobalVariable {
-                name: name.clone(),
-                type_: global_val_type.clone(),
-            };
-            Some(Variable::GlobalVal(global_val))
+        } else if let Some(global_val) = self.global_vals.get(name) {
+            Some(Variable::GlobalVal(global_val.clone()))
         } else {
             None
         }
@@ -123,18 +144,18 @@ impl VariableDeclearations {
     // 新しいローカル変数スコープを作成する
     pub fn create_local_scope(&mut self) {
         let new_scope = LocalScope {
-            frame_offset: self.local_frame_size,
+            frame_offset: self.current_frame_offset,
             scope_val_names: vec![],
         };
         self.local_scopes.push(new_scope);
-        self.local_scope_depth = self.local_scopes.len();
+        self.local_scope_depth = self.local_scopes.len() - 1;
     }
 
     // 現在の(=最も深い)ローカル変数スコープから抜ける
     pub fn exit_local_scope(&mut self) {
         if let Some(exit_scope) = self.local_scopes.pop() {
             // スタックフレームサイズをスコープ開始時に戻す
-            self.local_frame_size = exit_scope.frame_offset;
+            self.current_frame_offset = exit_scope.frame_offset;
             // 脱出するスコープに登録されているローカル変数をローカル変数テーブルから削除する
             for local_val in exit_scope.scope_val_names {
                 self.local_vals.remove(&local_val);
@@ -152,5 +173,14 @@ impl VariableDeclearations {
                 }
             }
         }
+    }
+
+    pub fn clear_local_val_scope(&mut self) {
+        self.local_vals.clear();
+        self.local_scopes.clear();
+        self.current_frame_offset = 8; // rbp分
+        self.max_frame_offset = 8;
+        self.local_scope_depth = 0;
+        self.hidden_local.clear();
     }
 }

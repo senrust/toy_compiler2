@@ -48,13 +48,11 @@ pub enum Operation {
 
 #[derive(Debug, Clone)]
 pub enum ASTKind {
-    FuncionDeclaration(String),
-    FuncionCall(Function),
+    FuncionDeclaration((String, usize)),
+    FuncionCall(Rc<Function>),
     Operation(Operation),
-    LocalVal(LocalVariable),
-    GlobalVal(GlobalVariable),
+    Variable(Variable),
     ImmidiateInterger(Number),
-    ImmidiateFloat(Number),
 }
 
 #[derive(Debug)]
@@ -65,6 +63,7 @@ pub struct AST {
     pub left: Option<Box<AST>>,
     pub right: Option<Box<AST>>,
     pub operand: Option<Box<AST>>,
+    pub context: Option<Box<AST>>,
     pub other: Option<Vec<Box<AST>>>,
 }
 
@@ -77,6 +76,20 @@ impl AST {
             left: None,
             right: None,
             operand: None,
+            context: None,
+            other: None,
+        }
+    }
+
+    fn new_variable_ast(val: Variable, info: NodeInfo, type_: Rc<Type>) -> AST {
+        AST {
+            kind: ASTKind::Variable(val),
+            info,
+            type_,
+            left: None,
+            right: None,
+            operand: None,
+            context: None,
             other: None,
         }
     }
@@ -94,6 +107,7 @@ impl AST {
             left: None,
             right: None,
             operand: Some(Box::new(operand)),
+            context: None,
             other: None,
         }
     }
@@ -112,26 +126,77 @@ impl AST {
             left: Some(Box::new(left)),
             right: Some(Box::new(right)),
             operand: None,
+            context: None,
+            other: None,
+        }
+    }
+
+    fn new_function_declaration_ast(
+        func_name: &str,
+        stack_size: usize,
+        info: NodeInfo,
+        type_: Rc<Type>,
+        func_context: AST,
+    ) -> AST {
+        AST {
+            kind: ASTKind::FuncionDeclaration((func_name.to_string(), stack_size)),
+            info,
+            type_,
+            left: None,
+            right: None,
+            operand: None,
+            context: Some(Box::new(func_context)),
             other: None,
         }
     }
 }
 
-// primary = num | "(" add ")"
+fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    if !nodes.expect_number() {
+        output_unexpected_node_err(nodes);
+    }
+
+    if let Ok((num, info)) = nodes.consume_integer() {
+        let type_ = definitions.get_primitive_type(&num);
+        match num {
+            Number::U64(num_u64) => {
+                return AST::new_integer_ast(Number::U64(num_u64), info, type_);
+            }
+            Number::F64(_num_f64) => unreachable!(),
+        }
+    } else {
+        invalidnumber_node_err(&nodes.get().unwrap().info);
+    }
+}
+
+fn ast_variable(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    if !nodes.expect_identifier() {
+        output_unexpected_node_err(nodes);
+    }
+
+    if let Ok((ident, info)) = nodes.consume_identifier() {
+        let val;
+        if let Some(defined_val) = definitions.get_variable(&ident) {
+            val = defined_val;
+        } else {
+            // とりあえず8バイトのlong型とする
+            let type_ = definitions.get_type("long").unwrap();
+            val = definitions.declear_local_val(&ident, type_).unwrap();
+        }
+        let val_type = val.get_type();
+        let val_ast = AST::new_variable_ast(val, info, val_type);
+        return val_ast;
+    } else {
+        invalidnumber_node_err(&nodes.get().unwrap().info);
+    }
+}
+
+// primary = num | variable | "(" add ")"
 fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     if nodes.expect_number() {
-        if let Ok((num, info)) = nodes.consume_integer() {
-            let type_ = definitions.get_primitive_type(&num);
-            match num {
-                Number::U64(num_u64) => {
-                    return AST::new_integer_ast(Number::U64(num_u64), info, type_);
-                }
-                Number::F64(_num_f64) => unreachable!(),
-            }
-        } else {
-            // expect_numberでノードが存在することはチェック済みなのでunwrapを使用
-            invalidnumber_node_err(&nodes.get().unwrap().info);
-        }
+        ast_number(nodes, definitions)
+    } else if nodes.expect_identifier() {
+        ast_variable(nodes, definitions)
     } else if nodes.expect_symbol(Symbol::LeftParenthesis) {
         // drop "(" node
         nodes.consume().unwrap();
@@ -268,11 +333,34 @@ fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
+fn ast_funcution_declearation(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    // テンポラリとしてmain関数を定義しておく
+    // 今後関数情報作成部を実装する
+    let main_func = Function::new("main", None, None);
+    let func_type = definitions.declear_function("main", main_func).unwrap();
+    let info = NodeInfo::new(0, 0, 0);
+
+    definitions.create_local_scope();
+    let func_context_ast = ast_equality(nodes, definitions);
+    let local_val_frame_size = definitions.get_local_val_frame_size();
+    let func_declear_ast = AST::new_function_declaration_ast(
+        "main",
+        local_val_frame_size,
+        info,
+        func_type,
+        func_context_ast,
+    );
+
+    definitions.exit_local_scope();
+    definitions.clear_local_val_scope();
+    func_declear_ast
+}
+
 pub fn make_asts(mut nodes: Nodes) -> Vec<AST> {
     let mut asts: Vec<AST> = vec![];
     let mut programinfo = Definitions::new();
     while nodes.has_node() {
-        let ast = ast_equality(&mut nodes, &mut programinfo);
+        let ast = ast_funcution_declearation(&mut nodes, &mut programinfo);
         asts.push(ast);
     }
     asts

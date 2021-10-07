@@ -367,7 +367,7 @@ pub fn tokenize(filepath: &Path) -> Vec<Token> {
     if let Ok(fd) = File::open(filepath) {
         file = fd;
     } else {
-        eprintln!("error: no such file {}",filepath.to_str().unwrap());
+        eprintln!("error: no such file {}", filepath.to_str().unwrap());
         std::process::exit(-1);
     }
 

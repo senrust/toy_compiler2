@@ -4,6 +4,7 @@ use std::path::Path;
 
 use crate::ast_maker::*;
 use crate::definition::number::Number;
+use crate::definition::variables::*;
 use crate::error::{unexpected_ast_err, unsupported_ast_err};
 
 fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
@@ -11,6 +12,20 @@ fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
         writeln!(buf, "    push {}", num).unwrap();
     } else {
         unexpected_ast_err(&ast, "imidiate number".to_string());
+    }
+}
+
+fn push_variable<T: Write>(ast: &mut AST, buf: &mut T) {
+    // 現在はローカル変数のみ対応
+    if let ASTKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
+        writeln!(buf, "    mov rax, rbp").unwrap();
+        writeln!(buf, "    sub rax, {}", local_val.frame_offset).unwrap();
+        writeln!(buf, "    push rax").unwrap();
+        writeln!(buf, "    pop rax").unwrap();
+        writeln!(buf, "    mov rax, [rax]").unwrap();
+        writeln!(buf, "    push rax").unwrap();
+    } else {
+        unexpected_ast_err(&ast, "local variable".to_string());
     }
 }
 
@@ -142,17 +157,29 @@ fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
         }
         ASTKind::Operation(Operation::Not) => exetute_not(ast, buf),
         ASTKind::ImmidiateInterger(_num) => push_number(ast, buf),
+        ASTKind::Variable(_val) => push_variable(ast, buf),
         _ => unsupported_ast_err(&ast),
     }
 }
 
-fn output_asts<T: Write>(asts: Vec<AST>, buf: &mut T) {
+fn output_function<T: Write>(ast: &mut AST, buf: &mut T) {
     // 現状は1関数のみなのでmainだけ
-    for mut ast in asts {
-        writeln!(buf, "main:").unwrap();
-        output_ast(&mut ast, buf);
-        writeln!(buf, "    pop rax").unwrap();
-        writeln!(buf, "    ret").unwrap();
+    match &ast.kind {
+        ASTKind::FuncionDeclaration((func_name, local_val_size)) => {
+            writeln!(buf, "{}:", func_name).unwrap();
+            writeln!(buf, "    push rbp").unwrap();
+            writeln!(buf, "    mov rbp, rsp").unwrap();
+            // ローカル変数を使用するときのみ
+            if *local_val_size > 8 {
+                writeln!(buf, "    sub rsp, -{}", local_val_size - 8).unwrap();
+            }
+            output_ast(ast.context.take().unwrap().as_mut(), buf);
+            writeln!(buf, "    pop rax").unwrap();
+            writeln!(buf, "    mov rsp, rbp").unwrap();
+            writeln!(buf, "    pop rbp").unwrap();
+            writeln!(buf, "    ret").unwrap();
+        }
+        _ => unsupported_ast_err(&ast),
     }
 }
 
@@ -165,5 +192,7 @@ fn write_assembly_header<T: Write>(buf: &mut T) {
 pub fn output_assembly(asts: Vec<AST>, output_file: &Path) {
     let mut buf = BufWriter::new(fs::File::create(output_file).unwrap());
     write_assembly_header(&mut buf);
-    output_asts(asts, &mut buf);
+    for mut ast in asts {
+        output_function(&mut ast, &mut buf);
+    }
 }
