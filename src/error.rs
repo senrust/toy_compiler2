@@ -41,7 +41,7 @@ fn print_node_error_info(err: NodeError, info: &NodeInfo) {
     eprintln!("line{}, pos{}, error: {}", info.line + 1, info.pos + 1, err);
 }
 
-pub fn invalidnumber_node_err(info: &NodeInfo) -> ! {
+pub fn invalid_number_node_err(info: &NodeInfo) -> ! {
     // get invalid token
     let invalidnum_token = get_token(info);
     print_node_error_info(NodeError::InvalidNumberErr(invalidnum_token), info);
@@ -94,5 +94,10 @@ pub fn unexpected_ast_err(ast: &AST, expected_kind: String) -> ! {
 
 pub fn unsupported_ast_err(ast: &AST) -> ! {
     print_ast_error_info(&ast, ASTError::UnSupportedASTKindError(ast.kind.clone()));
+    exit(-1);
+}
+
+pub fn unassignable_ast_err(ast: &AST) -> ! {
+    print_ast_error_info(&ast, ASTError::UnAssignableASTKindError);
     exit(-1);
 }

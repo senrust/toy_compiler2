@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::ast_maker::*;
 use crate::definition::number::Number;
 use crate::definition::variables::*;
-use crate::error::{unexpected_ast_err, unsupported_ast_err};
+use crate::error::*;
 
 fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
     if let ASTKind::ImmidiateInterger(Number::U64(num)) = ast.kind {
@@ -15,7 +15,7 @@ fn push_number<T: Write>(ast: &mut AST, buf: &mut T) {
     }
 }
 
-fn push_variable<T: Write>(ast: &mut AST, buf: &mut T) {
+fn push_variable_value<T: Write>(ast: &mut AST, buf: &mut T) {
     // 現在はローカル変数のみ対応
     if let ASTKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
         writeln!(buf, "    mov rax, rbp").unwrap();
@@ -23,6 +23,17 @@ fn push_variable<T: Write>(ast: &mut AST, buf: &mut T) {
         writeln!(buf, "    push rax").unwrap();
         writeln!(buf, "    pop rax").unwrap();
         writeln!(buf, "    mov rax, [rax]").unwrap();
+        writeln!(buf, "    push rax").unwrap();
+    } else {
+        unexpected_ast_err(&ast, "local variable".to_string());
+    }
+}
+
+fn push_variable_address<T: Write>(ast: &AST, buf: &mut T) {
+    // 現在はローカル変数のみ対応
+    if let ASTKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
+        writeln!(buf, "    mov rax, rbp").unwrap();
+        writeln!(buf, "    sub rax, {}", local_val.frame_offset).unwrap();
         writeln!(buf, "    push rax").unwrap();
     } else {
         unexpected_ast_err(&ast, "local variable".to_string());
@@ -57,6 +68,12 @@ fn write_value_compararison<T: Write>(buf: &mut T, comp: &str, num: usize) {
     writeln!(buf, "    cmp rax, {}", num).unwrap();
     writeln!(buf, "    {} al", comp).unwrap();
     writeln!(buf, "    movzb rax, al").unwrap();
+    writeln!(buf, "    push rdi").unwrap();
+}
+
+fn write_assignment<T: Write>(buf: &mut T) {
+    write_pop_two_values(buf);
+    writeln!(buf, "    mov [rax], rdi").unwrap();
     writeln!(buf, "    push rax").unwrap();
 }
 
@@ -146,6 +163,24 @@ fn exetute_not<T: Write>(ast: &mut AST, buf: &mut T) {
     write_value_compararison(buf, "sete", 0);
 }
 
+fn exetute_assign<T: Write>(ast: &mut AST, buf: &mut T) {
+    match ast.kind {
+        ASTKind::Operation(Operation::Assign) => (),
+        _ => unexpected_ast_err(&ast, "operation =".to_string()),
+    }
+    // 左辺値が被代入可能化確認
+    let left_ast = ast.left.take().unwrap();
+    if let ASTKind::Variable(_val) = &left_ast.kind {
+        // 代入は右から評価する
+        output_ast(ast.right.take().unwrap().as_mut(), buf);
+        push_variable_address(&left_ast, buf);
+        write_assignment(buf);
+        return;
+    } else {
+        unassignable_ast_err(&ast);
+    }
+}
+
 fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
     match &ast.kind {
         ASTKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
@@ -156,8 +191,9 @@ fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
             exetute_comp(ast, buf)
         }
         ASTKind::Operation(Operation::Not) => exetute_not(ast, buf),
+        ASTKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
         ASTKind::ImmidiateInterger(_num) => push_number(ast, buf),
-        ASTKind::Variable(_val) => push_variable(ast, buf),
+        ASTKind::Variable(_val) => push_variable_value(ast, buf),
         _ => unsupported_ast_err(&ast),
     }
 }
@@ -171,7 +207,7 @@ fn output_function<T: Write>(ast: &mut AST, buf: &mut T) {
             writeln!(buf, "    mov rbp, rsp").unwrap();
             // ローカル変数を使用するときのみ
             if *local_val_size > 8 {
-                writeln!(buf, "    sub rsp, -{}", local_val_size - 8).unwrap();
+                writeln!(buf, "    sub rsp, {}", local_val_size - 8).unwrap();
             }
             output_ast(ast.context.take().unwrap().as_mut(), buf);
             writeln!(buf, "    pop rax").unwrap();

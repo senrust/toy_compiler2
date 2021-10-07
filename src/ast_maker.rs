@@ -12,6 +12,7 @@ use std::rc::Rc;
 pub enum ASTError {
     UnexpecdASTKindError(ASTKind, String),
     UnSupportedASTKindError(ASTKind),
+    UnAssignableASTKindError,
 }
 
 impl fmt::Display for ASTError {
@@ -27,6 +28,9 @@ impl fmt::Display for ASTError {
             ASTError::UnSupportedASTKindError(ast_type) => {
                 write!(f, "unsupported ast kind: {:?}", ast_type,)
             }
+            ASTError::UnAssignableASTKindError => {
+                write!(f, "this tokein cant not be assigned")
+            }
         }
     }
 }
@@ -37,13 +41,14 @@ pub enum Operation {
     Sub,
     Mul,
     Div,
-    Eq,    // ==
-    NotEq, // !=
-    Gt,    // >
-    Lt,    // <
-    Ge,    // >=
-    Le,    // <=
-    Not,   // !
+    Eq,     // ==
+    NotEq,  // !=
+    Gt,     // >
+    Lt,     // <
+    Ge,     // >=
+    Le,     // <=
+    Not,    // !
+    Assign, // =
 }
 
 #[derive(Debug, Clone)]
@@ -165,7 +170,7 @@ fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
             Number::F64(_num_f64) => unreachable!(),
         }
     } else {
-        invalidnumber_node_err(&nodes.get().unwrap().info);
+        invalid_number_node_err(&nodes.get().unwrap().info);
     }
 }
 
@@ -187,7 +192,7 @@ fn ast_variable(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         let val_ast = AST::new_variable_ast(val, info, val_type);
         return val_ast;
     } else {
-        invalidnumber_node_err(&nodes.get().unwrap().info);
+        output_unexpected_node_err(nodes);
     }
 }
 
@@ -310,7 +315,7 @@ fn ast_relational(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
-// equality   = relational ("==" relational | "!=" relational)*
+// equality = relational ("==" relational | "!=" relational)*
 fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     let left_ast = ast_relational(nodes, definitions);
     let mut operation;
@@ -333,6 +338,29 @@ fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
+// assign = equality ("=" equality)*
+// 左辺値が左辺値となりうるかの確認はコンパイル側でおこなう
+fn ast_assign(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    let assignee_ast = ast_equality(nodes, definitions);
+    let mut assign_ast = assignee_ast;
+    loop {
+        if !nodes.expect_symbol(Symbol::Assign) {
+            return assign_ast;
+        }
+        let ast_info = nodes.consume().unwrap();
+        let ast_assigner = ast_assign(nodes, definitions);
+        // とりあえず代入の型は8バイトにしておく
+        let type_: Rc<Type> = definitions.get_type("long").unwrap();
+        assign_ast = AST::new_binary_operation_ast(
+            Operation::Assign,
+            ast_info,
+            type_,
+            assign_ast,
+            ast_assigner,
+        );
+    }
+}
+
 fn ast_funcution_declearation(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     // テンポラリとしてmain関数を定義しておく
     // 今後関数情報作成部を実装する
@@ -341,7 +369,7 @@ fn ast_funcution_declearation(nodes: &mut Nodes, definitions: &mut Definitions) 
     let info = NodeInfo::new(0, 0, 0);
 
     definitions.create_local_scope();
-    let func_context_ast = ast_equality(nodes, definitions);
+    let func_context_ast = ast_assign(nodes, definitions);
     let local_val_frame_size = definitions.get_local_val_frame_size();
     let func_declear_ast = AST::new_function_declaration_ast(
         "main",

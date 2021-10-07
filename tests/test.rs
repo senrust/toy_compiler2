@@ -105,3 +105,8 @@ fn variable_test() {
     let (dir, source, output, _answer) = get_test_parameter("variable");
     do_compile(&dir, &source, &output);
 }
+
+#[test]
+fn assign_test() {
+    do_test("assign");
+}
