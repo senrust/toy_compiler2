@@ -53,7 +53,7 @@ pub enum Operation {
 
 #[derive(Debug, Clone)]
 pub enum ASTKind {
-    FuncionDeclaration((String, usize)),
+    FunctionImplementation((String, usize)),
     FuncionCall(Rc<Function>),
     Operation(Operation),
     Variable(Variable),
@@ -68,8 +68,7 @@ pub struct AST {
     pub left: Option<Box<AST>>,
     pub right: Option<Box<AST>>,
     pub operand: Option<Box<AST>>,
-    pub context: Option<Box<AST>>,
-    pub other: Option<Vec<Box<AST>>>,
+    pub expr: Option<Vec<AST>>,
 }
 
 impl AST {
@@ -81,8 +80,7 @@ impl AST {
             left: None,
             right: None,
             operand: None,
-            context: None,
-            other: None,
+            expr: None,
         }
     }
 
@@ -94,8 +92,7 @@ impl AST {
             left: None,
             right: None,
             operand: None,
-            context: None,
-            other: None,
+            expr: None,
         }
     }
 
@@ -112,8 +109,7 @@ impl AST {
             left: None,
             right: None,
             operand: Some(Box::new(operand)),
-            context: None,
-            other: None,
+            expr: None,
         }
     }
 
@@ -131,27 +127,25 @@ impl AST {
             left: Some(Box::new(left)),
             right: Some(Box::new(right)),
             operand: None,
-            context: None,
-            other: None,
+            expr: None,
         }
     }
 
-    fn new_function_declaration_ast(
+    fn new_function_implementation_ast(
         func_name: &str,
-        stack_size: usize,
         info: NodeInfo,
         type_: Rc<Type>,
-        func_context: AST,
+        frame_size: usize,
+        expr_vec: Vec<AST>,
     ) -> AST {
         AST {
-            kind: ASTKind::FuncionDeclaration((func_name.to_string(), stack_size)),
+            kind: ASTKind::FunctionImplementation((func_name.to_string(), frame_size)),
             info,
             type_,
             left: None,
             right: None,
             operand: None,
-            context: Some(Box::new(func_context)),
-            other: None,
+            expr: Some(expr_vec),
         }
     }
 }
@@ -361,34 +355,47 @@ fn ast_assign(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
-fn ast_funcution_declearation(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_expr(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    ast_assign(nodes, definitions)
+}
+
+fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     // テンポラリとしてmain関数を定義しておく
     // 今後関数情報作成部を実装する
     let main_func = Function::new("main", None, None);
     let func_type = definitions.declear_function("main", main_func).unwrap();
     let info = NodeInfo::new(0, 0, 0);
+    let mut expr_vec: Vec<AST> = vec![];
 
-    definitions.create_local_scope();
-    let func_context_ast = ast_assign(nodes, definitions);
-    let local_val_frame_size = definitions.get_local_val_frame_size();
-    let func_declear_ast = AST::new_function_declaration_ast(
-        "main",
-        local_val_frame_size,
-        info,
-        func_type,
-        func_context_ast,
-    );
+    definitions.initialize_local_scope();
+    definitions.enter_new_local_scope();
 
-    definitions.exit_local_scope();
-    definitions.clear_local_val_scope();
-    func_declear_ast
+    let expr_ast = ast_expr(nodes, definitions);
+    expr_vec.push(expr_ast);
+    
+    // 本来は関数実装終了までだが, 今は;の間ループにする
+    //while !nodes.expect_symbol(Symbol::RightCurlyBracket) {
+    while nodes.expect_symbol(Symbol::SemiColon) {
+        nodes.consume().unwrap();
+        if nodes.is_empty() {
+            break;
+        }
+        let expr_ast = ast_expr(nodes, definitions);
+        expr_vec.push(expr_ast);
+    }
+
+    definitions.exit_current_local_scope();
+    let frame_size = definitions.get_local_val_frame_size();
+    let func_ast =
+        AST::new_function_implementation_ast("main", info, func_type, frame_size, expr_vec);
+    func_ast
 }
 
 pub fn make_asts(mut nodes: Nodes) -> Vec<AST> {
     let mut asts: Vec<AST> = vec![];
     let mut programinfo = Definitions::new();
     while nodes.has_node() {
-        let ast = ast_funcution_declearation(&mut nodes, &mut programinfo);
+        let ast = ast_funcution_implementaion(&mut nodes, &mut programinfo);
         asts.push(ast);
     }
     asts

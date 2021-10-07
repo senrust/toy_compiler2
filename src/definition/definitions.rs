@@ -57,12 +57,16 @@ impl Definitions {
         self.variable.get_variable(name)
     }
 
-    pub fn create_local_scope(&mut self) {
-        self.variable.create_local_scope()
+    pub fn initialize_local_scope(&mut self) {
+        self.variable.clear_local_val_scope()
     }
 
-    pub fn exit_local_scope(&mut self) {
-        self.variable.exit_local_scope()
+    pub fn enter_new_local_scope(&mut self) {
+        self.variable.enter_new_local_scope()
+    }
+
+    pub fn exit_current_local_scope(&mut self) {
+        self.variable.exit_current_local_scope()
     }
 
     pub fn get_local_val_frame_size(&self) -> usize {

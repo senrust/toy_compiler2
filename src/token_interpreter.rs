@@ -180,6 +180,10 @@ impl Nodes {
         self.vec.get(self.cur)
     }
 
+    pub fn is_empty(&self) -> bool {
+        !self.has_node()
+    }
+
     pub fn has_node(&self) -> bool {
         self.cur < self.vec.len()
     }

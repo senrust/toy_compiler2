@@ -201,7 +201,7 @@ fn output_ast<T: Write>(ast: &mut AST, buf: &mut T) {
 fn output_function<T: Write>(ast: &mut AST, buf: &mut T) {
     // 現状は1関数のみなのでmainだけ
     match &ast.kind {
-        ASTKind::FuncionDeclaration((func_name, local_val_size)) => {
+        ASTKind::FunctionImplementation((func_name, local_val_size)) => {
             writeln!(buf, "{}:", func_name).unwrap();
             writeln!(buf, "    push rbp").unwrap();
             writeln!(buf, "    mov rbp, rsp").unwrap();
@@ -209,8 +209,11 @@ fn output_function<T: Write>(ast: &mut AST, buf: &mut T) {
             if *local_val_size > 8 {
                 writeln!(buf, "    sub rsp, {}", local_val_size - 8).unwrap();
             }
-            output_ast(ast.context.take().unwrap().as_mut(), buf);
-            writeln!(buf, "    pop rax").unwrap();
+            let expr_ast_vec = ast.expr.take().unwrap();
+            for mut expr_ast in expr_ast_vec {
+                output_ast(&mut expr_ast, buf);
+                writeln!(buf, "    pop rax").unwrap();
+            }
             writeln!(buf, "    mov rsp, rbp").unwrap();
             writeln!(buf, "    pop rbp").unwrap();
             writeln!(buf, "    ret").unwrap();

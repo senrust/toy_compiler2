@@ -110,3 +110,9 @@ fn variable_test() {
 fn assign_test() {
     do_test("assign");
 }
+
+#[test]
+fn expressions_test() {
+    do_test("expressions");
+}
+

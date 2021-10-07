@@ -141,8 +141,8 @@ impl VariableDeclearations {
         }
     }
 
-    // 新しいローカル変数スコープを作成する
-    pub fn create_local_scope(&mut self) {
+    // ローカル変数スコープに入る
+    pub fn enter_new_local_scope(&mut self) {
         let new_scope = LocalScope {
             frame_offset: self.current_frame_offset,
             scope_val_names: vec![],
@@ -152,7 +152,7 @@ impl VariableDeclearations {
     }
 
     // 現在の(=最も深い)ローカル変数スコープから抜ける
-    pub fn exit_local_scope(&mut self) {
+    pub fn exit_current_local_scope(&mut self) {
         if let Some(exit_scope) = self.local_scopes.pop() {
             // スタックフレームサイズをスコープ開始時に戻す
             self.current_frame_offset = exit_scope.frame_offset;
