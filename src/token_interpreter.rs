@@ -1,4 +1,5 @@
 use crate::definition::number::{string_to_number, Number};
+use crate::definition::reservedwords::{check_reserved_word, Reserved};
 use crate::definition::symbols::{get_token_symbol, Symbol};
 use crate::source_tokenizer::{Token, TokenKind};
 use std::fmt;
@@ -8,6 +9,7 @@ pub enum NodeKind {
     Number(String),
     Symbol(Symbol),
     Identifier(String),
+    Reserved(Reserved),
     RawString(String),
 }
 
@@ -31,7 +33,11 @@ fn get_node_kind(token: Token) -> (NodeKind, NodeInfo) {
             return (NodeKind::Number(token.token), info);
         }
         TokenKind::Identifier => {
-            return (NodeKind::Identifier(token.token), info);
+            if let Some(reserved) = check_reserved_word(&token.token) {
+                return (NodeKind::Reserved(reserved), info);
+            } else {
+                return (NodeKind::Identifier(token.token), info);
+            }
         }
         TokenKind::QuoteText => {
             return (NodeKind::RawString(token.token), info);

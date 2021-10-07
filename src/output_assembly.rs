@@ -68,13 +68,13 @@ fn write_value_compararison<T: Write>(buf: &mut T, comp: &str, num: usize) {
     writeln!(buf, "    cmp rax, {}", num).unwrap();
     writeln!(buf, "    {} al", comp).unwrap();
     writeln!(buf, "    movzb rax, al").unwrap();
-    writeln!(buf, "    push rdi").unwrap();
+    writeln!(buf, "    push rax").unwrap();
 }
 
 fn write_assignment<T: Write>(buf: &mut T) {
     write_pop_two_values(buf);
     writeln!(buf, "    mov [rax], rdi").unwrap();
-    writeln!(buf, "    push rax").unwrap();
+    writeln!(buf, "    push rdi").unwrap();
 }
 
 fn exetute_mul<T: Write>(ast: &mut AST, buf: &mut T) {

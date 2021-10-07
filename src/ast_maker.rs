@@ -372,7 +372,7 @@ fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions)
 
     let expr_ast = ast_expr(nodes, definitions);
     expr_vec.push(expr_ast);
-    
+
     // 本来は関数実装終了までだが, 今は;の間ループにする
     //while !nodes.expect_symbol(Symbol::RightCurlyBracket) {
     while nodes.expect_symbol(Symbol::SemiColon) {
