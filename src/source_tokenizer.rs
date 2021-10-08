@@ -68,7 +68,7 @@ pub struct Token {
 }
 
 impl Token {
-    fn new(token: &Vec<char>, info: &TokenizeInfo, kind: TokenKind) -> Token {
+    fn new(token: &[char], info: &TokenizeInfo, kind: TokenKind) -> Token {
         Token {
             token: token.iter().collect(),
             kind,
@@ -77,7 +77,7 @@ impl Token {
         }
     }
 
-    fn new_number_token(token: &Vec<char>, info: &TokenizeInfo) -> Token {
+    fn new_number_token(token: &[char], info: &TokenizeInfo) -> Token {
         let token_string: String = token.iter().collect();
         Token {
             token: token_string,
@@ -148,11 +148,7 @@ impl TokenizeLine {
     }
 
     fn has_char(&self) -> bool {
-        if self.cur < self.line.len() {
-            true
-        } else {
-            false
-        }
+        self.cur < self.line.len()
     }
 
     fn peek_nextchar(&self, step: usize) -> Option<char> {

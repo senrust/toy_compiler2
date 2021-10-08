@@ -25,6 +25,6 @@ fn main() {
         let nodes = make_nodes(tokens);
         let asts = make_asts(nodes);
         let outputpath = Path::new("./tmp.s");
-        output_assembly::output_assembly(asts, &outputpath);
+        output_assembly::output_assembly(asts, outputpath);
     }
 }

@@ -29,22 +29,18 @@ impl NodeInfo {
 fn get_node_kind(token: Token) -> (NodeKind, NodeInfo) {
     let info = NodeInfo::new(token.line, token.pos, token.token.len());
     match token.kind {
-        TokenKind::Number => {
-            return (NodeKind::Number(token.token), info);
-        }
+        TokenKind::Number => (NodeKind::Number(token.token), info),
         TokenKind::Identifier => {
             if let Some(reserved) = check_reserved_word(&token.token) {
-                return (NodeKind::Reserved(reserved), info);
+                (NodeKind::Reserved(reserved), info)
             } else {
-                return (NodeKind::Identifier(token.token), info);
+                (NodeKind::Identifier(token.token), info)
             }
         }
-        TokenKind::QuoteText => {
-            return (NodeKind::RawString(token.token), info);
-        }
+        TokenKind::QuoteText => (NodeKind::RawString(token.token), info),
         TokenKind::Symbol => {
             let symbol = get_token_symbol(token.token);
-            return (NodeKind::Symbol(symbol), info);
+            (NodeKind::Symbol(symbol), info)
         }
     }
 }
@@ -62,23 +58,15 @@ impl Node {
 
     pub fn expect_symbol(&self, expected_symbol: &Symbol) -> bool {
         match self.kind {
-            NodeKind::Symbol(ref symbol) => {
-                return *symbol == *expected_symbol;
-            }
-            _ => {
-                return false;
-            }
+            NodeKind::Symbol(ref symbol) => *symbol == *expected_symbol,
+            _ => false,
         }
     }
 
     pub fn expect_number(&self) -> bool {
         match self.kind {
-            NodeKind::Number(_) => {
-                return true;
-            }
-            _ => {
-                return false;
-            }
+            NodeKind::Number(_) => true,
+            _ => false,
         }
     }
 
@@ -86,58 +74,40 @@ impl Node {
         match self.kind {
             NodeKind::Number(ref num_txt) => {
                 if let Ok(num) = string_to_number(num_txt) {
-                    return Ok(num);
+                    Ok(num)
                 } else {
-                    return Err(());
+                    Err(())
                 }
             }
-            _ => {
-                return Err(());
-            }
+            _ => Err(()),
         }
     }
 
     pub fn expect_identifier(&self) -> bool {
         match self.kind {
-            NodeKind::Identifier(_) => {
-                return true;
-            }
-            _ => {
-                return false;
-            }
+            NodeKind::Identifier(_) => true,
+            _ => false,
         }
     }
 
     pub fn get_identifier(&self) -> Result<&String, ()> {
         match self.kind {
-            NodeKind::Identifier(ref identifier) => {
-                return Ok(identifier);
-            }
-            _ => {
-                return Err(());
-            }
+            NodeKind::Identifier(ref identifier) => Ok(identifier),
+            _ => Err(()),
         }
     }
 
     pub fn expect_rawstring(&self) -> bool {
         match self.kind {
-            NodeKind::RawString(_) => {
-                return true;
-            }
-            _ => {
-                return false;
-            }
+            NodeKind::RawString(_) => true,
+            _ => false,
         }
     }
 
     pub fn get_rawstring(&self) -> Option<&String> {
         match self.kind {
-            NodeKind::RawString(ref rawstring) => {
-                return Some(rawstring);
-            }
-            _ => {
-                return None;
-            }
+            NodeKind::RawString(ref rawstring) => Some(rawstring),
+            _ => None,
         }
     }
 }
@@ -258,11 +228,7 @@ impl Nodes {
 
     pub fn expect_identifier(&mut self) -> bool {
         if let Some(node) = self.vec.get(self.cur) {
-            if node.expect_identifier() {
-                true
-            } else {
-                false
-            }
+            node.expect_identifier()
         } else {
             false
         }

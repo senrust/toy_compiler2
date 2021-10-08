@@ -9,26 +9,26 @@ use crate::token_interpreter::{NodeInfo, Nodes};
 use std::fmt;
 use std::rc::Rc;
 
-pub enum ASTError {
-    UnexpecdASTKindError(ASTKind, String),
-    UnSupportedASTKindError(ASTKind),
-    UnAssignableASTKindError,
+pub enum AstError {
+    UnExpectedAstKind(AstKind, String),
+    UnSupportedAstKind(AstKind),
+    UnAssignableAstKind,
 }
 
-impl fmt::Display for ASTError {
+impl fmt::Display for AstError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ASTError::UnexpecdASTKindError(ast_type, expected_type) => {
+            AstError::UnExpectedAstKind(ast_type, expected_type) => {
                 write!(
                     f,
                     "unexpected ast kind: {:?}, expexcted type: {}",
                     ast_type, expected_type
                 )
             }
-            ASTError::UnSupportedASTKindError(ast_type) => {
+            AstError::UnSupportedAstKind(ast_type) => {
                 write!(f, "unsupported ast kind: {:?}", ast_type,)
             }
-            ASTError::UnAssignableASTKindError => {
+            AstError::UnAssignableAstKind => {
                 write!(f, "this tokein cant not be assigned")
             }
         }
@@ -52,7 +52,7 @@ pub enum Operation {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ASTKind {
+pub enum AstKind {
     FunctionImplementation((String, usize)),
     FuncionCall(Rc<Function>),
     Expressions,
@@ -62,21 +62,21 @@ pub enum ASTKind {
 }
 
 #[derive(Debug)]
-pub struct AST {
-    pub kind: ASTKind,
+pub struct Ast {
+    pub kind: AstKind,
     pub info: NodeInfo,
     pub type_: Rc<Type>,
-    pub left: Option<Box<AST>>,
-    pub right: Option<Box<AST>>,
-    pub operand: Option<Box<AST>>,
-    pub exprs: Option<Vec<AST>>,
-    pub context: Option<Box<AST>>,
+    pub left: Option<Box<Ast>>,
+    pub right: Option<Box<Ast>>,
+    pub operand: Option<Box<Ast>>,
+    pub exprs: Option<Vec<Ast>>,
+    pub context: Option<Box<Ast>>,
 }
 
-impl AST {
-    fn new_integer_ast(num: Number, info: NodeInfo, type_: Rc<Type>) -> AST {
-        AST {
-            kind: ASTKind::ImmidiateInterger(num),
+impl Ast {
+    fn new_integer_ast(num: Number, info: NodeInfo, type_: Rc<Type>) -> Ast {
+        Ast {
+            kind: AstKind::ImmidiateInterger(num),
             info,
             type_,
             left: None,
@@ -87,9 +87,9 @@ impl AST {
         }
     }
 
-    fn new_variable_ast(val: Variable, info: NodeInfo, type_: Rc<Type>) -> AST {
-        AST {
-            kind: ASTKind::Variable(val),
+    fn new_variable_ast(val: Variable, info: NodeInfo, type_: Rc<Type>) -> Ast {
+        Ast {
+            kind: AstKind::Variable(val),
             info,
             type_,
             left: None,
@@ -104,10 +104,10 @@ impl AST {
         operation: Operation,
         info: NodeInfo,
         type_: Rc<Type>,
-        operand: AST,
-    ) -> AST {
-        AST {
-            kind: ASTKind::Operation(operation),
+        operand: Ast,
+    ) -> Ast {
+        Ast {
+            kind: AstKind::Operation(operation),
             info,
             type_,
             left: None,
@@ -122,11 +122,11 @@ impl AST {
         operation: Operation,
         info: NodeInfo,
         type_: Rc<Type>,
-        left: AST,
-        right: AST,
-    ) -> AST {
-        AST {
-            kind: ASTKind::Operation(operation),
+        left: Ast,
+        right: Ast,
+    ) -> Ast {
+        Ast {
+            kind: AstKind::Operation(operation),
             info,
             type_,
             left: Some(Box::new(left)),
@@ -142,10 +142,10 @@ impl AST {
         info: NodeInfo,
         type_: Rc<Type>,
         frame_size: usize,
-        context: AST,
-    ) -> AST {
-        AST {
-            kind: ASTKind::FunctionImplementation((func_name.to_string(), frame_size)),
+        context: Ast,
+    ) -> Ast {
+        Ast {
+            kind: AstKind::FunctionImplementation((func_name.to_string(), frame_size)),
             info,
             type_,
             left: None,
@@ -159,11 +159,11 @@ impl AST {
     fn new_expressions_ast(
         info: NodeInfo,
         type_: Rc<Type>,
-        exprs: Vec<AST>,
-        context: Option<Box<AST>>,
-    ) -> AST {
-        AST {
-            kind: ASTKind::Expressions,
+        exprs: Vec<Ast>,
+        context: Option<Box<Ast>>,
+    ) -> Ast {
+        Ast {
+            kind: AstKind::Expressions,
             info,
             type_,
             left: None,
@@ -175,7 +175,7 @@ impl AST {
     }
 }
 
-fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     if !nodes.expect_number() {
         output_unexpected_node_err(nodes);
     }
@@ -183,9 +183,7 @@ fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     if let Ok((num, info)) = nodes.consume_integer() {
         let type_ = definitions.get_primitive_type(&num);
         match num {
-            Number::U64(num_u64) => {
-                return AST::new_integer_ast(Number::U64(num_u64), info, type_);
-            }
+            Number::U64(num_u64) => Ast::new_integer_ast(Number::U64(num_u64), info, type_),
             Number::F64(_num_f64) => unreachable!(),
         }
     } else {
@@ -193,7 +191,7 @@ fn ast_number(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
-fn ast_variable(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_variable(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     if !nodes.expect_identifier() {
         output_unexpected_node_err(nodes);
     }
@@ -208,15 +206,14 @@ fn ast_variable(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
             val = definitions.declear_local_val(&ident, type_).unwrap();
         }
         let val_type = val.get_type();
-        let val_ast = AST::new_variable_ast(val, info, val_type);
-        return val_ast;
+        Ast::new_variable_ast(val, info, val_type)
     } else {
         output_unexpected_node_err(nodes);
     }
 }
 
 // primary = num | variable | "(" add ")"
-fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     if nodes.expect_number() {
         ast_number(nodes, definitions)
     } else if nodes.expect_identifier() {
@@ -228,7 +225,7 @@ fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         if nodes.expect_symbol(Symbol::RightParenthesis) {
             // drop ")" node
             nodes.consume().unwrap();
-            return add_ast;
+            add_ast
         } else {
             output_unclosed_node_err(nodes);
         }
@@ -238,35 +235,32 @@ fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
 }
 
 // unary = primary |  + primary |  - primary | ! unary
-fn ast_unary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_unary(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     if nodes.expect_symbol(Symbol::Add) {
         // drop "+" node
         nodes.consume().unwrap();
-        return ast_primary(nodes, definitions);
+        ast_primary(nodes, definitions)
     } else if nodes.expect_symbol(Symbol::Sub) {
         // drop "-" node
         let sub_info = nodes.consume().unwrap();
         let primary_ast = ast_primary(nodes, definitions);
         let type_ = primary_ast.type_.clone();
-        let zero_ast = AST::new_integer_ast(Number::U64(0), sub_info.clone(), type_.clone());
-        let sub_ast =
-            AST::new_binary_operation_ast(Operation::Sub, sub_info, type_, zero_ast, primary_ast);
-        return sub_ast;
+        let zero_ast = Ast::new_integer_ast(Number::U64(0), sub_info.clone(), type_.clone());
+        Ast::new_binary_operation_ast(Operation::Sub, sub_info, type_, zero_ast, primary_ast)
     } else if nodes.expect_symbol(Symbol::Not) {
         // drop "!" node
         let not_info = nodes.consume().unwrap();
         let operand_ast = ast_unary(nodes, definitions);
         // とりあえず8バイトにしておく
         let type_ = definitions.get_type("long").unwrap();
-        let not_ast = AST::new_single_operation_ast(Operation::Not, not_info, type_, operand_ast);
-        return not_ast;
+        Ast::new_single_operation_ast(Operation::Not, not_info, type_, operand_ast)
     } else {
-        return ast_primary(nodes, definitions);
+        ast_primary(nodes, definitions)
     }
 }
 
 // mul = unary | (* unary | / unary)*
-fn ast_mul(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_mul(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     let left_ast = ast_unary(nodes, definitions);
     let mut operation;
     let mut mul_ast = left_ast;
@@ -282,12 +276,12 @@ fn ast_mul(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         let ast_info = nodes.consume().unwrap();
         let right_ast = ast_unary(nodes, definitions);
         let type_: Rc<Type> = evaluate_binary_operation_type(&mul_ast, &right_ast).unwrap();
-        mul_ast = AST::new_binary_operation_ast(operation, ast_info, type_, mul_ast, right_ast);
+        mul_ast = Ast::new_binary_operation_ast(operation, ast_info, type_, mul_ast, right_ast);
     }
 }
 
 // add = mul | (+  mul | - mul)*
-fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     let left_ast = ast_mul(nodes, definitions);
     let mut operation;
     let mut add_ast = left_ast;
@@ -303,12 +297,12 @@ fn ast_add(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         let ast_info = nodes.consume().unwrap();
         let right_ast = ast_mul(nodes, definitions);
         let type_: Rc<Type> = evaluate_binary_operation_type(&add_ast, &right_ast).unwrap();
-        add_ast = AST::new_binary_operation_ast(operation, ast_info, type_, add_ast, right_ast);
+        add_ast = Ast::new_binary_operation_ast(operation, ast_info, type_, add_ast, right_ast);
     }
 }
 
 // relational = add (">" add | "<" add | ">=" add| "<=" add)*
-fn ast_relational(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_relational(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     let left_ast = ast_add(nodes, definitions);
     let mut operation;
     let mut relational_ast = left_ast;
@@ -330,12 +324,12 @@ fn ast_relational(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         // とりあえず比較の型は8バイトにしておく
         let type_: Rc<Type> = definitions.get_type("long").unwrap();
         relational_ast =
-            AST::new_binary_operation_ast(operation, ast_info, type_, relational_ast, right_ast);
+            Ast::new_binary_operation_ast(operation, ast_info, type_, relational_ast, right_ast);
     }
 }
 
 // equality = relational ("==" relational | "!=" relational)*
-fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     let left_ast = ast_relational(nodes, definitions);
     let mut operation;
     let mut equality_ast = left_ast;
@@ -353,13 +347,13 @@ fn ast_equality(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         // とりあえず比較の型は8バイトにしておく
         let type_: Rc<Type> = definitions.get_type("long").unwrap();
         equality_ast =
-            AST::new_binary_operation_ast(operation, ast_info, type_, equality_ast, right_ast);
+            Ast::new_binary_operation_ast(operation, ast_info, type_, equality_ast, right_ast);
     }
 }
 
 // assign = equality ("=" equality)*
 // 左辺値が左辺値となりうるかの確認はコンパイル側でおこなう
-fn ast_assign(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_assign(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     let assignee_ast = ast_equality(nodes, definitions);
     let mut assign_ast = assignee_ast;
     loop {
@@ -370,7 +364,7 @@ fn ast_assign(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         let ast_assigner = ast_assign(nodes, definitions);
         // とりあえず代入の型は8バイトにしておく
         let type_: Rc<Type> = definitions.get_type("long").unwrap();
-        assign_ast = AST::new_binary_operation_ast(
+        assign_ast = Ast::new_binary_operation_ast(
             Operation::Assign,
             ast_info,
             type_,
@@ -381,7 +375,7 @@ fn ast_assign(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
 }
 
 // expr = assign | exprs
-fn ast_expr(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_expr(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     if nodes.expect_symbol(Symbol::LeftCurlyBracket) {
         ast_exprs(nodes, definitions)
     } else {
@@ -390,8 +384,8 @@ fn ast_expr(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
 }
 
 // exprs = "{" (expr ";") *  + (expr)? "}"
-fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
-    let mut exprs: Vec<AST> = vec![];
+fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
+    let mut exprs: Vec<Ast> = vec![];
 
     if !nodes.expect_symbol(Symbol::LeftCurlyBracket) {
         output_unexpected_node_err(nodes);
@@ -402,7 +396,7 @@ fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     // ローカル変数のネストを深くする
     definitions.enter_new_local_scope();
 
-    let mut exd_context: Option<Box<AST>> = None; // {expr; expr; expr} の";"で閉じられていない最後のexpr
+    let mut exd_context: Option<Box<Ast>> = None; // {expr; expr; expr} の";"で閉じられていない最後のexpr
                                                   // "}"が登場するまで
     while !nodes.expect_symbol(Symbol::RightCurlyBracket) {
         if nodes.is_empty() {
@@ -415,7 +409,7 @@ fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
             // consume ";"
             nodes.consume().unwrap();
             exprs.push(expr);
-        } else if expr.kind == ASTKind::Expressions {
+        } else if expr.kind == AstKind::Expressions {
             // 複文のときはセミコロン不要
             exprs.push(expr);
         } else {
@@ -435,11 +429,10 @@ fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
         exprs_type = definitions.get_type("void").unwrap();
     }
 
-    let exprs_ast = AST::new_expressions_ast(exprs_info, exprs_type, exprs, exd_context);
-    exprs_ast
+    Ast::new_expressions_ast(exprs_info, exprs_type, exprs, exd_context)
 }
 
-fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     // テンポラリとしてmain関数を定義しておく
     // 今後関数情報作成部を実装する
     let main_func = Function::new("main", None, None);
@@ -449,18 +442,11 @@ fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions)
     definitions.initialize_local_scope();
     let expfunc_context_ast = ast_exprs(nodes, definitions);
     let frame_size = definitions.get_local_val_frame_size();
-    let func_ast = AST::new_function_implementation_ast(
-        "main",
-        info,
-        func_type,
-        frame_size,
-        expfunc_context_ast,
-    );
-    func_ast
+    Ast::new_function_implementation_ast("main", info, func_type, frame_size, expfunc_context_ast)
 }
 
-pub fn make_asts(mut nodes: Nodes) -> Vec<AST> {
-    let mut asts: Vec<AST> = vec![];
+pub fn make_asts(mut nodes: Nodes) -> Vec<Ast> {
+    let mut asts: Vec<Ast> = vec![];
     let mut programinfo = Definitions::new();
     while nodes.has_node() {
         let ast = ast_funcution_implementaion(&mut nodes, &mut programinfo);

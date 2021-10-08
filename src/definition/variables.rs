@@ -70,7 +70,7 @@ impl VariableDeclearations {
 
     // グローバル変数を宣言
     pub fn declear_global_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
-        if let Some(_) = self.global_vals.get(name) {
+        if self.global_vals.get(name).is_some() {
             return Err(());
         }
         let new_globalval = Rc::new(GlobalVariable {
@@ -109,10 +109,10 @@ impl VariableDeclearations {
         // ローカル変数をスタックに追加すると8バイトアライメントを超えてしまう場合は,
         // スタックフレームをアライメント境界まで増やしてからローカル変数を追加する
         // すでにアライメント境界のときは何もしない
-        if self.current_frame_offset % 8 != 0 {
-            if self.current_frame_offset / 8 != (self.current_frame_offset + type_.size) / 8 {
-                self.current_frame_offset += 8 - (self.current_frame_offset % 8);
-            }
+        if self.current_frame_offset % 8 != 0
+            && self.current_frame_offset / 8 != (self.current_frame_offset + type_.size) / 8
+        {
+            self.current_frame_offset += 8 - (self.current_frame_offset % 8);
         }
 
         // ローカル変数を必要な情報を追加して登録
@@ -140,10 +140,10 @@ impl VariableDeclearations {
     pub fn get_variable(&self, name: &str) -> Option<Variable> {
         if let Some(local_val) = self.local_vals.get(name) {
             Some(Variable::LocalVal(local_val.clone()))
-        } else if let Some(global_val) = self.global_vals.get(name) {
-            Some(Variable::GlobalVal(global_val.clone()))
         } else {
-            None
+            self.global_vals
+                .get(name)
+                .map(|global_val| Variable::GlobalVal(global_val.clone()))
         }
     }
 
@@ -165,7 +165,7 @@ impl VariableDeclearations {
 
     // 現在の(=最も深い)ローカル変数スコープから抜ける
     pub fn exit_current_local_scope(&mut self) {
-        if let None = self.local_scopes {
+        if self.local_scopes.is_none() {
             return;
         }
 

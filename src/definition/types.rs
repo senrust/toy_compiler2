@@ -1,5 +1,5 @@
 use super::functions::Function;
-use crate::ast_maker::AST;
+use crate::ast_maker::Ast;
 use crate::definition::number::Number;
 use std::{collections::HashMap, marker::PhantomData, rc::Rc};
 
@@ -10,9 +10,9 @@ pub struct SturctMember {
 }
 
 impl SturctMember {
-    fn new(name: &String, type_: Rc<Type>) -> Self {
+    fn new(name: &str, type_: Rc<Type>) -> Self {
         SturctMember {
-            name: name.clone(),
+            name: name.to_string(),
             type_,
         }
     }
@@ -57,49 +57,29 @@ impl PartialEq for Type {
 
         // お互いにプリミティブ型の場合
         if self.primitive.is_some() && rhs.primitive.is_some() {
-            if self.primitive.as_ref().unwrap() == rhs.primitive.as_ref().unwrap() {
-                return true;
-            } else {
-                return false;
-            }
+            return self.primitive.as_ref().unwrap() == rhs.primitive.as_ref().unwrap();
         }
 
         // お互いにポインタ型の場合
         if self.pointer.is_some() && self.pointer.is_some() {
-            if self.pointer.as_ref().unwrap() == rhs.pointer.as_ref().unwrap() {
-                return true;
-            } else {
-                return false;
-            }
+            return self.pointer.as_ref().unwrap() == rhs.pointer.as_ref().unwrap();
         }
 
         // お互いに配列型の場合
         if self.array.is_some() && self.array.is_some() {
-            if self.array.as_ref().unwrap() == rhs.array.as_ref().unwrap() {
-                return true;
-            } else {
-                return false;
-            }
+            return self.array.as_ref().unwrap() == rhs.array.as_ref().unwrap();
         }
 
         // お互いに構造体型の場合
         // 同じ構造体名であれば良い
         // 無名構造体の比較は関数の引数チェックでは行われない
         if self.struct_name.is_some() && self.struct_name.is_some() {
-            if self.struct_name.as_ref().unwrap() == rhs.struct_name.as_ref().unwrap() {
-                return true;
-            } else {
-                return false;
-            }
+            return self.struct_name.as_ref().unwrap() == rhs.struct_name.as_ref().unwrap();
         }
 
         // お互いに関数型の場合
         if self.function.is_some() && self.function.is_some() {
-            if self.function.as_ref().unwrap() == rhs.function.as_ref().unwrap() {
-                return true;
-            } else {
-                return false;
-            }
+            return self.function.as_ref().unwrap() == rhs.function.as_ref().unwrap();
         }
 
         // それ以外の場合はfalse
@@ -152,17 +132,15 @@ impl Type {
     }
 
     // 無名構造体は空文字列を渡す
-    pub fn new_stuct(name: &String, members: Vec<SturctMember>) -> Self {
+    pub fn new_stuct(name: &str, members: Vec<SturctMember>) -> Self {
         let mut offset: usize = 0;
         let mut member_vec: HashMap<String, (usize, SturctMember)> = HashMap::new();
         for member in members {
             let member_size = member.type_.size;
             // このメンバーを加えることでアライメント境界を超える場合はオフセットをアライメント境界まで動かす
             // すでにアライメント境界のときは何もしない
-            if offset % 8 != 0 {
-                if offset / 8 != (offset + member_size) / 8 {
-                    offset += 8 - (offset % 8);
-                }
+            if offset % 8 != 0 && offset / 8 != (offset + member_size) / 8 {
+                offset += 8 - (offset % 8);
             }
 
             member_vec.insert(member.name.clone(), (offset, member));
@@ -173,7 +151,7 @@ impl Type {
             primitive: None,
             pointer: None,
             array: None,
-            struct_name: Some(name.clone()),
+            struct_name: Some(name.to_string()),
             struct_members: Some(Rc::new(member_vec)),
             function: None,
             _private: PhantomData,
@@ -201,7 +179,7 @@ impl Type {
     }
 
     pub fn deref_pointer(&self) -> Option<Rc<Type>> {
-        self.pointer.as_ref().map(|type_| type_.clone())
+        self.pointer.as_ref().cloned()
     }
 }
 
@@ -277,6 +255,6 @@ impl TypesDefinitions {
     }
 }
 
-pub fn evaluate_binary_operation_type(left: &AST, _right: &AST) -> Result<Rc<Type>, ()> {
+pub fn evaluate_binary_operation_type(left: &Ast, _right: &Ast) -> Result<Rc<Type>, ()> {
     Ok(left.type_.clone())
 }

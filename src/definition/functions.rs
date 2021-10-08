@@ -39,10 +39,11 @@ impl PartialEq for Function {
             }
         }
 
-        if self.ret.is_some() && rhs.ret.is_some() {
-            if self.ret.as_ref().unwrap() != rhs.ret.as_ref().unwrap() {
-                return false;
-            }
+        if self.ret.is_some()
+            && rhs.ret.is_some()
+            && self.ret.as_ref().unwrap() != rhs.ret.as_ref().unwrap()
+        {
+            return false;
         }
         true
     }
@@ -60,11 +61,7 @@ impl FunctionDefinitions {
     }
 
     pub fn get_function(&mut self, name: &str) -> Option<Rc<Function>> {
-        if let Some(function) = self.dict.get(name) {
-            Some(function.clone())
-        } else {
-            None
-        }
+        self.dict.get(name).cloned()
     }
 
     pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Rc<Function>, ()> {

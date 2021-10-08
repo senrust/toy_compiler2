@@ -4,14 +4,12 @@ pub enum Number {
     F64(f64),
 }
 
-pub fn string_to_number(string: &String) -> Result<Number, ()> {
+pub fn string_to_number(string: &str) -> Result<Number, ()> {
     let mut ishex = false;
     let mut isdouble = false;
     let chars: Vec<char> = string.chars().collect();
-    if chars.len() > 2 {
-        if chars[0] == '0' && (chars[1] == 'x' || chars[1] == 'X') {
-            ishex = true;
-        }
+    if chars.len() > 2 && chars[0] == '0' && (chars[1] == 'x' || chars[1] == 'X') {
+        ishex = true;
     }
     if !ishex {
         for ch in &chars {
@@ -39,7 +37,7 @@ pub fn string_to_number(string: &String) -> Result<Number, ()> {
                             num = num * 10.0 + digit as f64;
                             order += 1;
                         } else {
-                            num = num + digit as f64 * 10f64.powi(order as i32);
+                            num += digit as f64 * 10f64.powi(order as i32);
                             order -= 1;
                         }
                     }

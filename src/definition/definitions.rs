@@ -21,7 +21,7 @@ impl Definitions {
     }
 
     pub fn get_primitive_type(&self, num: &Number) -> Rc<Type> {
-        self.type_.get_primitive_type(&num)
+        self.type_.get_primitive_type(num)
     }
 
     pub fn get_type(&self, name: &str) -> Result<Rc<Type>, ()> {

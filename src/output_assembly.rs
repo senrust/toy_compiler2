@@ -16,7 +16,11 @@ impl<T: Write> OutputBuffer<T> {
     fn new(buf: T) -> Self {
         Self {
             buf,
-            stack_alignment: 0,
+            stack_alignment: 0, // 関数呼び出し用に使用中のスタックサイズを把握する
+                                // 関数呼び出し時はスタックのアライメントが16バイトである必要があるため,
+                                // 16バイトアライメントでの位置を記録する
+                                // stack_alignment = 4　ならば, 関数呼び出し時は 16 -4 = 12 バイト,
+                                // スタックを増やす必要がある
         }
     }
 
@@ -40,7 +44,12 @@ impl<T: Write> OutputBuffer<T> {
     #[inline]
     fn output_pop(&mut self, register: &str) {
         writeln!(self.buf, "    pop {}", register).unwrap();
-        self.stack_alignment = (self.stack_alignment - 8) / 16;
+        // 16バイトアライメントなので正の値とする
+        let mut rem = self.stack_alignment - 8;
+        if rem < 0 {
+            rem += 16;
+        }
+        self.stack_alignment = rem;
     }
 }
 
@@ -60,14 +69,14 @@ fn output_function_prelude<T: Write>(
     local_val_size: &usize,
     buf: &mut OutputBuffer<T>,
 ) {
-    let ref func_label = format!("{}:", func_name);
+    let func_label = &format!("{}:", func_name);
     buf.output(func_label);
     buf.output_push("rbp");
     buf.output("    mov rbp, rsp");
     // ローカル変数を使用するときのみ
     // rbpの退避分でスタックは8バイト使用している
     if *local_val_size > 8 {
-        let ref sub_rsp_instruction = format!("    sub rsp, {}", local_val_size - 8);
+        let sub_rsp_instruction = &format!("    sub rsp, {}", local_val_size - 8);
         buf.output(sub_rsp_instruction);
     }
 }
@@ -79,30 +88,30 @@ fn output_function_epilogue<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output("");
 }
 
-fn push_number<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
-    if let ASTKind::ImmidiateInterger(Number::U64(num)) = ast.kind {
+fn push_number<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    if let AstKind::ImmidiateInterger(Number::U64(num)) = ast.kind {
         buf.output_push_num(num)
     } else {
-        unexpected_ast_err(&ast, "imidiate number".to_string());
+        unexpected_ast_err(ast, "imidiate number".to_string());
     }
 }
 
-fn push_variable_value<T: Write>(ast: &AST, buf: &mut OutputBuffer<T>) {
+fn push_variable_value<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
     push_variable_address(ast, buf);
     buf.output_pop("rax");
     buf.output("    mov rax, [rax]");
     buf.output_push("rax");
 }
 
-fn push_variable_address<T: Write>(ast: &AST, buf: &mut OutputBuffer<T>) {
+fn push_variable_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
     // 現在はローカル変数のみ対応
-    if let ASTKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
+    if let AstKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
         buf.output("    mov rax, rbp");
         let local_offset = format!("    sub rax, {}", local_val.frame_offset);
         buf.output(&local_offset);
         buf.output_push("rax");
     } else {
-        unexpected_ast_err(&ast, "local variable".to_string());
+        unexpected_ast_err(ast, "local variable".to_string());
     }
 }
 
@@ -149,18 +158,18 @@ fn write_assignment<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output_push("rdi");
 }
 
-fn exetute_mul<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
-    if let ASTKind::Operation(Operation::Mul) = ast.kind {
+fn exetute_mul<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    if let AstKind::Operation(Operation::Mul) = ast.kind {
         output_ast(ast.right.take().unwrap().as_mut(), buf);
         output_ast(ast.left.take().unwrap().as_mut(), buf);
         write_operation(buf, "imul");
     } else {
-        unexpected_ast_err(&ast, "operation *".to_string());
+        unexpected_ast_err(ast, "operation *".to_string());
     }
 }
 
-fn exetute_div<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
-    if let ASTKind::Operation(Operation::Div) = ast.kind {
+fn exetute_div<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    if let AstKind::Operation(Operation::Div) = ast.kind {
         output_ast(ast.right.take().unwrap().as_mut(), buf);
         output_ast(ast.left.take().unwrap().as_mut(), buf);
         write_pop_two_values(buf);
@@ -168,18 +177,18 @@ fn exetute_div<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
         buf.output("    idiv rdi");
         buf.output_push("rax");
     } else {
-        unexpected_ast_err(&ast, "operation /".to_string());
+        unexpected_ast_err(ast, "operation /".to_string());
     }
 }
 
-fn exetute_add<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+fn exetute_add<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let operation;
-    if let ASTKind::Operation(Operation::Add) = ast.kind {
+    if let AstKind::Operation(Operation::Add) = ast.kind {
         operation = "add";
-    } else if let ASTKind::Operation(Operation::Sub) = ast.kind {
+    } else if let AstKind::Operation(Operation::Sub) = ast.kind {
         operation = "sub";
     } else {
-        unexpected_ast_err(&ast, "operation + or -".to_string());
+        unexpected_ast_err(ast, "operation + or -".to_string());
     }
 
     output_ast(ast.right.take().unwrap().as_mut(), buf);
@@ -187,77 +196,76 @@ fn exetute_add<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
     write_operation(buf, operation);
 }
 
-fn exetute_eq<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+fn exetute_eq<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let euality;
-    if let ASTKind::Operation(Operation::Eq) = ast.kind {
+    if let AstKind::Operation(Operation::Eq) = ast.kind {
         euality = "sete";
-    } else if let ASTKind::Operation(Operation::NotEq) = ast.kind {
+    } else if let AstKind::Operation(Operation::NotEq) = ast.kind {
         euality = "setne";
     } else {
-        unexpected_ast_err(&ast, "operation == or !=".to_string());
+        unexpected_ast_err(ast, "operation == or !=".to_string());
     }
     output_ast(ast.right.take().unwrap().as_mut(), buf);
     output_ast(ast.left.take().unwrap().as_mut(), buf);
     write_compararison(buf, euality);
 }
 
-fn exetute_comp<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+fn exetute_comp<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let comparison;
     // Gt, Geは右辺と左辺を反転させたLt, Leとして扱う
-    if let ASTKind::Operation(Operation::Gt | Operation::Ge) = ast.kind {
+    if let AstKind::Operation(Operation::Gt | Operation::Ge) = ast.kind {
         std::mem::swap(&mut ast.right, &mut ast.left);
-        if let ASTKind::Operation(Operation::Gt) = ast.kind {
-            ast.kind = ASTKind::Operation(Operation::Lt);
+        if let AstKind::Operation(Operation::Gt) = ast.kind {
+            ast.kind = AstKind::Operation(Operation::Lt);
         } else {
-            ast.kind = ASTKind::Operation(Operation::Le);
+            ast.kind = AstKind::Operation(Operation::Le);
         }
     }
 
-    if let ASTKind::Operation(Operation::Lt) = ast.kind {
+    if let AstKind::Operation(Operation::Lt) = ast.kind {
         comparison = "setl";
-    } else if let ASTKind::Operation(Operation::Le) = ast.kind {
+    } else if let AstKind::Operation(Operation::Le) = ast.kind {
         comparison = "setle";
     } else {
-        unexpected_ast_err(&ast, "operation >, <, >= or <=".to_string());
+        unexpected_ast_err(ast, "operation >, <, >= or <=".to_string());
     }
     output_ast(ast.right.take().unwrap().as_mut(), buf);
     output_ast(ast.left.take().unwrap().as_mut(), buf);
     write_compararison(buf, comparison);
 }
 
-fn exetute_not<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+fn exetute_not<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match ast.kind {
-        ASTKind::Operation(Operation::Not) => (),
-        _ => unexpected_ast_err(&ast, "operation !".to_string()),
+        AstKind::Operation(Operation::Not) => (),
+        _ => unexpected_ast_err(ast, "operation !".to_string()),
     }
 
     output_ast(ast.operand.take().unwrap().as_mut(), buf);
     write_value_compararison(buf, "sete", 0);
 }
 
-fn exetute_assign<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match ast.kind {
-        ASTKind::Operation(Operation::Assign) => (),
-        _ => unexpected_ast_err(&ast, "operation =".to_string()),
+        AstKind::Operation(Operation::Assign) => (),
+        _ => unexpected_ast_err(ast, "operation =".to_string()),
     }
     // 左辺値が被代入可能化確認
     let left_ast = ast.left.take().unwrap();
-    if let ASTKind::Variable(_val) = &left_ast.kind {
+    if let AstKind::Variable(_val) = &left_ast.kind {
         // 代入は右から評価する
         output_ast(ast.right.take().unwrap().as_mut(), buf);
         push_variable_address(left_ast.as_ref(), buf);
         write_assignment(buf);
-        return;
     } else {
-        unassignable_ast_err(&ast);
+        unassignable_ast_err(ast);
     }
 }
 
 // 複文のコンパイル
-fn excute_exprs<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match ast.kind {
-        ASTKind::Expressions => (),
-        _ => unexpected_ast_err(&ast, "{} block".to_string()),
+        AstKind::Expressions => (),
+        _ => unexpected_ast_err(ast, "{} block".to_string()),
     }
     let expr_ast_vec = ast.exprs.take().unwrap();
     for mut expr_ast in expr_ast_vec {
@@ -271,34 +279,34 @@ fn excute_exprs<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
     }
 }
 
-fn output_ast<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
-        ASTKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
-        ASTKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
-        ASTKind::Operation(Operation::Div) => exetute_div(ast, buf),
-        ASTKind::Operation(Operation::Eq | Operation::NotEq) => exetute_eq(ast, buf),
-        ASTKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => {
+        AstKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
+        AstKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
+        AstKind::Operation(Operation::Div) => exetute_div(ast, buf),
+        AstKind::Operation(Operation::Eq | Operation::NotEq) => exetute_eq(ast, buf),
+        AstKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => {
             exetute_comp(ast, buf)
         }
-        ASTKind::Operation(Operation::Not) => exetute_not(ast, buf),
-        ASTKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
-        ASTKind::ImmidiateInterger(_num) => push_number(ast, buf),
-        ASTKind::Variable(_val) => push_variable_value(ast, buf),
-        ASTKind::Expressions => excute_exprs(ast, buf),
-        _ => unsupported_ast_err(&ast),
+        AstKind::Operation(Operation::Not) => exetute_not(ast, buf),
+        AstKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
+        AstKind::ImmidiateInterger(_num) => push_number(ast, buf),
+        AstKind::Variable(_val) => push_variable_value(ast, buf),
+        AstKind::Expressions => excute_exprs(ast, buf),
+        _ => unsupported_ast_err(ast),
     }
 }
 
-fn output_function<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+fn output_function<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     // 現状は1関数のみなのでmainだけ
     match &ast.kind {
-        ASTKind::FunctionImplementation((func_name, local_val_size)) => {
+        AstKind::FunctionImplementation((func_name, local_val_size)) => {
             output_function_prelude(func_name, local_val_size, buf);
             let mut func_context_ast = ast.context.take().unwrap();
             output_ast(func_context_ast.as_mut(), buf);
             output_function_epilogue(buf);
         }
-        _ => unsupported_ast_err(&ast),
+        _ => unsupported_ast_err(ast),
     }
 }
 
@@ -308,7 +316,7 @@ fn write_assembly_header<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output("");
 }
 
-pub fn output_assembly(asts: Vec<AST>, output_file: &Path) {
+pub fn output_assembly(asts: Vec<Ast>, output_file: &Path) {
     let buf = BufWriter::new(fs::File::create(output_file).unwrap());
     let mut outputbuf = OutputBuffer::new(buf);
     write_assembly_header(&mut outputbuf);

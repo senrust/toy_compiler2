@@ -1,6 +1,6 @@
 use std::process::exit;
 
-use crate::ast_maker::{ASTError, AST};
+use crate::ast_maker::{Ast, AstError};
 use crate::source_tokenizer::{TokenizeError, TokenizeInfo};
 use crate::token_interpreter::{NodeError, NodeInfo, Nodes};
 
@@ -11,8 +11,7 @@ fn get_token(info: &NodeInfo) -> String {
     unsafe {
         error_line = &SOURCE_TXT[info.line];
     }
-    let token = error_line[info.pos..info.pos + info.width].to_string();
-    token
+    error_line[info.pos..info.pos + info.width].to_string()
 }
 
 // トークン化に失敗した行とそのトークンを表示して終了する
@@ -23,7 +22,7 @@ pub fn exit_tokenizer_error(err: TokenizeError, info: &TokenizeInfo) -> ! {
     }
     eprintln!("{}", error_line);
     let mut error_cur = " ".repeat(info.pos);
-    error_cur.push_str("^");
+    error_cur.push('^');
     eprintln!("{}", error_cur);
     eprintln!("line{}, pos{}, error: {}", info.line + 1, info.pos + 1, err);
     exit(-1);
@@ -36,7 +35,7 @@ fn print_node_error_info(err: NodeError, info: &NodeInfo) {
     }
     eprintln!("{}", error_line);
     let mut error_cur = " ".repeat(info.pos);
-    error_cur.push_str("^");
+    error_cur.push('^');
     eprintln!("{}", error_cur);
     eprintln!("line{}, pos{}, error: {}", info.line + 1, info.pos + 1, err);
 }
@@ -85,14 +84,14 @@ pub fn output_unexpected_node_err(nodes: &Nodes) -> ! {
     unexpected_node_err(&err_node.info);
 }
 
-fn print_ast_error_info(ast: &AST, err: ASTError) {
+fn print_ast_error_info(ast: &Ast, err: AstError) {
     let error_line;
     unsafe {
         error_line = &SOURCE_TXT[ast.info.line];
     }
     eprintln!("{}", error_line);
     let mut error_cur = " ".repeat(ast.info.pos);
-    error_cur.push_str("^");
+    error_cur.push('^');
     eprintln!("{}", error_cur);
     eprintln!(
         "line{}, pos{}, error: {}",
@@ -101,24 +100,24 @@ fn print_ast_error_info(ast: &AST, err: ASTError) {
         err
     );
     if cfg!(debug_assertions) {
-        eprintln!("Err AST: {:?}", ast);
+        eprintln!("Err Ast: {:?}", ast);
     }
 }
 
-pub fn unexpected_ast_err(ast: &AST, expected_kind: String) -> ! {
+pub fn unexpected_ast_err(ast: &Ast, expected_kind: String) -> ! {
     print_ast_error_info(
-        &ast,
-        ASTError::UnexpecdASTKindError(ast.kind.clone(), expected_kind),
+        ast,
+        AstError::UnExpectedAstKind(ast.kind.clone(), expected_kind),
     );
     exit(-1);
 }
 
-pub fn unsupported_ast_err(ast: &AST) -> ! {
-    print_ast_error_info(&ast, ASTError::UnSupportedASTKindError(ast.kind.clone()));
+pub fn unsupported_ast_err(ast: &Ast) -> ! {
+    print_ast_error_info(ast, AstError::UnSupportedAstKind(ast.kind.clone()));
     exit(-1);
 }
 
-pub fn unassignable_ast_err(ast: &AST) -> ! {
-    print_ast_error_info(&ast, ASTError::UnAssignableASTKindError);
+pub fn unassignable_ast_err(ast: &Ast) -> ! {
+    print_ast_error_info(ast, AstError::UnAssignableAstKind);
     exit(-1);
 }
