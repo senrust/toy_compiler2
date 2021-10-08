@@ -61,7 +61,7 @@ fn get_reserved_word_type(indentifiler: &str) -> Reserved {
         "extern" => Reserved::Extern,
         "float" => Reserved::Float,
         "for" => Reserved::For,
-        "goto" => Reserved:: Goto,
+        "goto" => Reserved::Goto,
         "if" => Reserved::If,
         "int" => Reserved::Int,
         "long" => Reserved::Long,
