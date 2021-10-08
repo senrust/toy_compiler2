@@ -1,0 +1,9 @@
+main () {
+    a = 10;
+    b = -5;
+    if (a + b != 5) {
+        return 0;
+    } else {
+        return 1;
+    }
+}

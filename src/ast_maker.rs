@@ -55,6 +55,7 @@ pub enum Operation {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Control {
     Return,
+    If,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -181,7 +182,13 @@ impl Ast {
         }
     }
 
-    fn new_control_ast(info: NodeInfo, type_: Rc<Type>, control: Control, exprs: Vec<Ast>) -> Ast {
+    fn new_control_ast(
+        info: NodeInfo,
+        type_: Rc<Type>,
+        control: Control,
+        context: Option<Box<Ast>>,
+        exprs: Vec<Ast>,
+    ) -> Ast {
         Ast {
             kind: AstKind::Control(control),
             info,
@@ -190,7 +197,7 @@ impl Ast {
             right: None,
             operand: None,
             exprs: Some(exprs),
-            context: None,
+            context,
         }
     }
 }
@@ -407,17 +414,60 @@ fn ast_return(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     // 今後関数の定義されている戻り型と比較を行う
     // 即;ならばvoid型に設定する
     let context = vec![return_value];
-    Ast::new_control_ast(info, type_, Control::Return, context)
+    Ast::new_control_ast(info, type_, Control::Return, None, context)
+}
+
+// if = "if" "(" assign ")" expr ("else" expr)?
+// if は contextに条件式, exprs[0]に trueのAst, exprs[1]にfalseのAstが入る
+fn ast_if(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
+    if !nodes.expect_reserved(Reserved::If) {
+        output_unexpected_node_err(nodes);
+    }
+
+    let mut if_ast_vec: Vec<Ast> = vec![];
+    // consume "if"
+    let if_info = nodes.consume().unwrap();
+    let if_type = definitions.get_type("void").unwrap();
+    if !nodes.expect_symbol(Symbol::LeftParenthesis) {
+        output_unexpected_node_err(nodes);
+    }
+    // consume "("
+    nodes.consume().unwrap();
+    let condition_ast = ast_assign(nodes, definitions);
+    if !nodes.expect_symbol(Symbol::RightParenthesis) {
+        output_unexpected_node_err(nodes);
+    }
+    // consume ")"
+    nodes.consume().unwrap();
+    // true時のAst
+    let true_ast = ast_expr(nodes, definitions);
+    if_ast_vec.push(true_ast);
+    if nodes.expect_reserved(Reserved::Else) {
+        // consume "else"
+        nodes.consume().unwrap();
+        let else_ast = ast_expr(nodes, definitions);
+        if_ast_vec.push(else_ast);
+    }
+    Ast::new_control_ast(
+        if_info,
+        if_type,
+        Control::If,
+        Some(Box::new(condition_ast)),
+        if_ast_vec,
+    )
 }
 
 // expr = exprs  |
 //        "return" assign
+//        "if" "(" assign ")" expr ("else" expr)?
 //        assign |
 fn ast_expr(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     if nodes.expect_symbol(Symbol::LeftCurlyBracket) {
         ast_exprs(nodes, definitions)
     } else if nodes.expect_reserved(Reserved::Return) {
         ast_return(nodes, definitions)
+    } else if nodes.expect_reserved(Reserved::If) {
+        ast_if(nodes, definitions)
     } else {
         ast_assign(nodes, definitions)
     }
@@ -436,24 +486,23 @@ fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     // ローカル変数のネストを深くする
     definitions.enter_new_local_scope();
 
-    let mut exd_context: Option<Box<Ast>> = None; // {expr; expr; expr} の";"で閉じられていない最後のexpr
-                                                  // "}"が登場するまで
+    let exd_context: Option<Box<Ast>> = None;
     while !nodes.expect_symbol(Symbol::RightCurlyBracket) {
         if nodes.is_empty() {
             output_unclosed_node_err(nodes);
         }
         let expr = ast_expr(nodes, definitions);
-        if nodes.expect_symbol(Symbol::RightCurlyBracket) {
-            exd_context = Some(Box::new(expr));
-        } else if nodes.expect_symbol(Symbol::SemiColon) {
+        if nodes.expect_symbol(Symbol::SemiColon) {
             // consume ";"
             nodes.consume().unwrap();
             exprs.push(expr);
-        } else if expr.kind == AstKind::Expressions {
-            // 複文のときはセミコロン不要
-            exprs.push(expr);
         } else {
-            output_unexpected_node_err(nodes);
+            // 複文, if文はセミコロン不要
+            match &expr.kind {
+                AstKind::Expressions => exprs.push(expr),
+                AstKind::Control(Control::If) => exprs.push(expr),
+                _ => output_unexpected_node_err(nodes),
+            }
         }
     }
     // ローカル変数のスコープを抜ける

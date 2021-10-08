@@ -120,3 +120,8 @@ fn expressions_test() {
 fn brackets_test() {
     do_test("brackets");
 }
+
+#[test]
+fn if_test() {
+    do_test("if");
+}

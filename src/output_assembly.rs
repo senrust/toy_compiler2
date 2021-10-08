@@ -9,6 +9,7 @@ use crate::error::*;
 
 struct OutputBuffer<T: Write> {
     buf: T,
+    label_index: usize,
     stack_alignment: i32,
 }
 
@@ -16,12 +17,17 @@ impl<T: Write> OutputBuffer<T> {
     fn new(buf: T) -> Self {
         Self {
             buf,
+            label_index: 0,
             stack_alignment: 0, // 関数呼び出し用に使用中のスタックサイズを把握する
                                 // 関数呼び出し時はスタックのアライメントが16バイトである必要があるため,
                                 // 16バイトアライメントでの位置を記録する
                                 // stack_alignment = 4　ならば, 関数呼び出し時は 16 -4 = 12 バイト,
                                 // スタックを増やす必要がある
         }
+    }
+
+    fn increment_label(&mut self) {
+        self.label_index += 1;
     }
 
     #[inline]
@@ -37,8 +43,9 @@ impl<T: Write> OutputBuffer<T> {
 
     #[inline]
     fn output_push_num(&mut self, num: u64) {
+        // 即値は4ビット
         writeln!(self.buf, "    push {}", num).unwrap();
-        self.stack_alignment = (self.stack_alignment + 8) / 16;
+        self.stack_alignment = (self.stack_alignment + 4) / 16;
     }
 
     #[inline]
@@ -85,7 +92,6 @@ fn output_function_epilogue<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output("    mov rsp, rbp");
     buf.output_pop("rbp");
     buf.output("ret");
-    buf.output("");
 }
 
 fn push_number<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
@@ -279,18 +285,49 @@ fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     }
 }
 
-//return分のコンパイル
+// return文のコンパイル
+// returnする値のastはexprs[0]
 fn execute_return<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match ast.kind {
         AstKind::Control(Control::Return) => (),
         _ => unexpected_ast_err(ast, "return".to_string()),
     }
-    // exprsの先頭にreturn値が入る
     let mut expr = ast.exprs.take().unwrap();
     let return_value = expr.first_mut().unwrap();
     output_ast(return_value, buf);
     buf.output_pop("rax");
     output_function_epilogue(buf);
+}
+
+// if文のコンパイル
+// if文の条件はcontext, true時の条件はexprs[0], elseがある場合はelse時の条件はexprs[1]にある
+fn execute_if<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    match ast.kind {
+        AstKind::Control(Control::If) => (),
+        _ => unexpected_ast_err(ast, "if".to_string()),
+    }
+
+    // 条件式のコンパイル
+    let mut condition = ast.context.take().unwrap();
+    let mut if_context = ast.exprs.take().unwrap();
+    let has_else = if_context.len() == 2;
+    output_ast(&mut condition, buf);
+    buf.output_pop("rax");
+    buf.output("cmp rax, 0");
+    if has_else {
+        buf.output(&format!("    je .Labelelse{}", buf.label_index));
+    } else {
+        buf.output(&format!("    je .Labelend{}", buf.label_index));
+    }
+    output_ast(&mut if_context[0], buf);
+    // else文がある場合
+    if has_else {
+        buf.output(&format!(".Labelelse{}:", buf.label_index));
+        output_ast(&mut if_context[1], buf);
+    } else {
+        buf.output(&format!(".Labelend{}:", buf.label_index));
+    }
+    buf.increment_label();
 }
 
 fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
@@ -305,6 +342,7 @@ fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         AstKind::Operation(Operation::Not) => exetute_not(ast, buf),
         AstKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
         AstKind::Control(Control::Return) => execute_return(ast, buf),
+        AstKind::Control(Control::If) => execute_if(ast, buf),
         AstKind::ImmidiateInterger(_num) => push_number(ast, buf),
         AstKind::Variable(_val) => push_variable_value(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
