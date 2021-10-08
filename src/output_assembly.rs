@@ -279,6 +279,20 @@ fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     }
 }
 
+//return分のコンパイル
+fn execute_return<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    match ast.kind {
+        AstKind::Control(Control::Return) => (),
+        _ => unexpected_ast_err(ast, "return".to_string()),
+    }
+    // exprsの先頭にreturn値が入る
+    let mut expr = ast.exprs.take().unwrap();
+    let return_value = expr.first_mut().unwrap();
+    output_ast(return_value, buf);
+    buf.output_pop("rax");
+    output_function_epilogue(buf);
+}
+
 fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
@@ -290,6 +304,7 @@ fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         }
         AstKind::Operation(Operation::Not) => exetute_not(ast, buf),
         AstKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
+        AstKind::Control(Control::Return) => execute_return(ast, buf),
         AstKind::ImmidiateInterger(_num) => push_number(ast, buf),
         AstKind::Variable(_val) => push_variable_value(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),

@@ -9,7 +9,7 @@ macro_rules! reserved_words_array {
     };
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Reserved {
     Auto,
     Break,

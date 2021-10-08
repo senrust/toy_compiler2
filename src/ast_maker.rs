@@ -1,6 +1,7 @@
 use crate::definition::definitions::Definitions;
 use crate::definition::functions::Function;
 use crate::definition::number::Number;
+use crate::definition::reservedwords::*;
 use crate::definition::symbols::*;
 use crate::definition::types::*;
 use crate::definition::variables::*;
@@ -52,11 +53,17 @@ pub enum Operation {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum Control {
+    Return,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum AstKind {
     FunctionImplementation((String, usize)),
     FuncionCall(Rc<Function>),
     Expressions,
     Operation(Operation),
+    Control(Control),
     Variable(Variable),
     ImmidiateInterger(Number),
 }
@@ -171,6 +178,19 @@ impl Ast {
             operand: None,
             exprs: Some(exprs),
             context,
+        }
+    }
+
+    fn new_control_ast(info: NodeInfo, type_: Rc<Type>, control: Control, exprs: Vec<Ast>) -> Ast {
+        Ast {
+            kind: AstKind::Control(control),
+            info,
+            type_,
+            left: None,
+            right: None,
+            operand: None,
+            exprs: Some(exprs),
+            context: None,
         }
     }
 }
@@ -374,10 +394,30 @@ fn ast_assign(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     }
 }
 
-// expr = assign | exprs
+// return = "return" assign
+// return は returnする対象をもつ
+fn ast_return(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
+    if !nodes.expect_reserved(Reserved::Return) {
+        output_unexpected_node_err(nodes);
+    }
+    // consume "return"
+    let info = nodes.consume().unwrap();
+    let return_value = ast_assign(nodes, definitions);
+    let type_ = return_value.type_.clone();
+    // 今後関数の定義されている戻り型と比較を行う
+    // 即;ならばvoid型に設定する
+    let context = vec![return_value];
+    Ast::new_control_ast(info, type_, Control::Return, context)
+}
+
+// expr = exprs  |
+//        "return" assign
+//        assign |
 fn ast_expr(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     if nodes.expect_symbol(Symbol::LeftCurlyBracket) {
         ast_exprs(nodes, definitions)
+    } else if nodes.expect_reserved(Reserved::Return) {
+        ast_return(nodes, definitions)
     } else {
         ast_assign(nodes, definitions)
     }
@@ -432,7 +472,6 @@ fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     Ast::new_expressions_ast(exprs_info, exprs_type, exprs, exd_context)
 }
 
-
 // 関数の引数を取得します
 fn get_func_args(nodes: &mut Nodes, _definitions: &mut Definitions) -> Option<Vec<Rc<Type>>> {
     if !nodes.expect_symbol(Symbol::LeftParenthesis) {
@@ -463,7 +502,13 @@ fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions)
     let expfunc_context_ast = ast_exprs(nodes, definitions);
     let frame_size = definitions.get_local_val_frame_size();
     // 関数AST作成
-    Ast::new_function_implementation_ast(&func_name, info, func_type, frame_size, expfunc_context_ast)
+    Ast::new_function_implementation_ast(
+        &func_name,
+        info,
+        func_type,
+        frame_size,
+        expfunc_context_ast,
+    )
 }
 
 pub fn make_asts(mut nodes: Nodes) -> Vec<Ast> {

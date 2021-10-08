@@ -110,6 +110,19 @@ impl Node {
             _ => None,
         }
     }
+
+    pub fn expect_reserved(&self, reserved: Reserved) -> bool {
+        match self.kind {
+            NodeKind::Reserved(ref word) => {
+                if *word == reserved {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
 }
 
 pub enum NodeError {
@@ -244,6 +257,14 @@ impl Nodes {
             }
         } else {
             Err(())
+        }
+    }
+
+    pub fn expect_reserved(&self, reserved: Reserved) -> bool {
+        if let Some(node) = self.vec.get(self.cur) {
+            node.expect_reserved(reserved)
+        } else {
+            false
         }
     }
 }

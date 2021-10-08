@@ -1,8 +1,9 @@
 main(){
     a = 10;
+    c;
     {
         b = 3 + 2;
         c = a * b / 5;
     }
-    c
+    return c;
 }
