@@ -432,17 +432,38 @@ fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
     Ast::new_expressions_ast(exprs_info, exprs_type, exprs, exd_context)
 }
 
-fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
-    // テンポラリとしてmain関数を定義しておく
-    // 今後関数情報作成部を実装する
-    let main_func = Function::new("main", None, None);
-    let func_type = definitions.declear_function("main", main_func).unwrap();
-    let info = NodeInfo::new(0, 0, 0);
 
+// 関数の引数を取得します
+fn get_func_args(nodes: &mut Nodes, _definitions: &mut Definitions) -> Option<Vec<Rc<Type>>> {
+    if !nodes.expect_symbol(Symbol::LeftParenthesis) {
+        output_unexpected_node_err(nodes);
+    }
+    // drop "("
+    nodes.consume().unwrap();
+
+    if !nodes.expect_symbol(Symbol::RightParenthesis) {
+        output_unexpected_node_err(nodes);
+    }
+    // drop ")"
+    nodes.consume().unwrap();
+    None
+}
+
+fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
+    if !nodes.expect_identifier() {
+        output_unexpected_node_err(nodes);
+    }
+    // 関数定義
+    let (func_name, info) = nodes.consume_identifier().unwrap();
+    let func_args = get_func_args(nodes, definitions);
+    let func = Function::new(&func_name, func_args, None);
+    let func_type = definitions.declear_function(&func_name, func).unwrap();
+    // 関数実装ASTを作成
     definitions.initialize_local_scope();
     let expfunc_context_ast = ast_exprs(nodes, definitions);
     let frame_size = definitions.get_local_val_frame_size();
-    Ast::new_function_implementation_ast("main", info, func_type, frame_size, expfunc_context_ast)
+    // 関数AST作成
+    Ast::new_function_implementation_ast(&func_name, info, func_type, frame_size, expfunc_context_ast)
 }
 
 pub fn make_asts(mut nodes: Nodes) -> Vec<Ast> {
