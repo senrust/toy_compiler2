@@ -55,6 +55,30 @@ impl<T: Write> Write for OutputBuffer<T> {
     }
 }
 
+fn output_function_prelude<T: Write>(
+    func_name: &str,
+    local_val_size: &usize,
+    buf: &mut OutputBuffer<T>,
+) {
+    let ref func_label = format!("{}:", func_name);
+    buf.output(func_label);
+    buf.output_push("rbp");
+    buf.output("    mov rbp, rsp");
+    // ローカル変数を使用するときのみ
+    // rbpの退避分でスタックは8バイト使用している
+    if *local_val_size > 8 {
+        let ref sub_rsp_instruction = format!("    sub rsp, {}", local_val_size - 8);
+        buf.output(sub_rsp_instruction);
+    }
+}
+
+fn output_function_epilogue<T: Write>(buf: &mut OutputBuffer<T>) {
+    buf.output("    mov rsp, rbp");
+    buf.output_pop("rbp");
+    buf.output("ret");
+    buf.output("");
+}
+
 fn push_number<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
     if let ASTKind::ImmidiateInterger(Number::U64(num)) = ast.kind {
         buf.output_push_num(num)
@@ -229,6 +253,24 @@ fn exetute_assign<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
     }
 }
 
+// 複文のコンパイル
+fn excute_exprs<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
+    match ast.kind {
+        ASTKind::Expressions => (),
+        _ => unexpected_ast_err(&ast, "{} block".to_string()),
+    }
+    let expr_ast_vec = ast.exprs.take().unwrap();
+    for mut expr_ast in expr_ast_vec {
+        output_ast(&mut expr_ast, buf);
+        buf.output_pop("rax");
+    }
+
+    // 複文の最後にカンマがない文が存在する場合
+    if let Some(ast) = ast.context.take().as_mut() {
+        output_ast(ast, buf);
+    }
+}
+
 fn output_ast<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         ASTKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
@@ -242,32 +284,9 @@ fn output_ast<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
         ASTKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
         ASTKind::ImmidiateInterger(_num) => push_number(ast, buf),
         ASTKind::Variable(_val) => push_variable_value(ast, buf),
+        ASTKind::Expressions => excute_exprs(ast, buf),
         _ => unsupported_ast_err(&ast),
     }
-}
-
-fn output_function_prelude<T: Write>(
-    func_name: &str,
-    local_val_size: &usize,
-    buf: &mut OutputBuffer<T>,
-) {
-    let ref func_label = format!("{}:", func_name);
-    buf.output(func_label);
-    buf.output_push("rbp");
-    buf.output("    mov rbp, rsp");
-    // ローカル変数を使用するときのみ
-    // rbpの退避分でスタックは8バイト使用している
-    if *local_val_size > 8 {
-        let ref sub_rsp_instruction = format!("    sub rsp, {}", local_val_size - 8);
-        buf.output(sub_rsp_instruction);
-    }
-}
-
-fn output_function_epilogue<T: Write>(buf: &mut OutputBuffer<T>) {
-    buf.output("    mov rsp, rbp");
-    buf.output_pop("rbp");
-    buf.output("ret");
-    buf.output("");
 }
 
 fn output_function<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
@@ -275,11 +294,8 @@ fn output_function<T: Write>(ast: &mut AST, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         ASTKind::FunctionImplementation((func_name, local_val_size)) => {
             output_function_prelude(func_name, local_val_size, buf);
-            let expr_ast_vec = ast.expr.take().unwrap();
-            for mut expr_ast in expr_ast_vec {
-                output_ast(&mut expr_ast, buf);
-                buf.output_pop("rax");
-            }
+            let mut func_context_ast = ast.context.take().unwrap();
+            output_ast(func_context_ast.as_mut(), buf);
             output_function_epilogue(buf);
         }
         _ => unsupported_ast_err(&ast),

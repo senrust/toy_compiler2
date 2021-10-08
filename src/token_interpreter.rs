@@ -145,6 +145,8 @@ impl Node {
 pub enum NodeError {
     UnexpectNodeError,
     InvalidNumberErr(String),
+    UnClosedError,
+    UnClosedEndError,
 }
 
 impl fmt::Display for NodeError {
@@ -155,6 +157,12 @@ impl fmt::Display for NodeError {
             }
             NodeError::InvalidNumberErr(str) => {
                 write!(f, "{} is invalid number", str)
+            }
+            NodeError::UnClosedError => {
+                write!(f, "unclosed")
+            }
+            NodeError::UnClosedEndError => {
+                write!(f, "unclosed end")
             }
         }
     }
@@ -184,6 +192,10 @@ impl Nodes {
 
     pub fn get(&self) -> Option<&Node> {
         self.vec.get(self.cur)
+    }
+
+    pub fn get_tail(&self) -> Option<&Node> {
+        self.vec.last()
     }
 
     pub fn is_empty(&self) -> bool {

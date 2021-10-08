@@ -35,7 +35,7 @@ impl fmt::Display for ASTError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operation {
     Add,
     Sub,
@@ -51,10 +51,11 @@ pub enum Operation {
     Assign, // =
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ASTKind {
     FunctionImplementation((String, usize)),
     FuncionCall(Rc<Function>),
+    Expressions,
     Operation(Operation),
     Variable(Variable),
     ImmidiateInterger(Number),
@@ -68,7 +69,8 @@ pub struct AST {
     pub left: Option<Box<AST>>,
     pub right: Option<Box<AST>>,
     pub operand: Option<Box<AST>>,
-    pub expr: Option<Vec<AST>>,
+    pub exprs: Option<Vec<AST>>,
+    pub context: Option<Box<AST>>,
 }
 
 impl AST {
@@ -80,7 +82,8 @@ impl AST {
             left: None,
             right: None,
             operand: None,
-            expr: None,
+            exprs: None,
+            context: None,
         }
     }
 
@@ -92,7 +95,8 @@ impl AST {
             left: None,
             right: None,
             operand: None,
-            expr: None,
+            exprs: None,
+            context: None,
         }
     }
 
@@ -109,7 +113,8 @@ impl AST {
             left: None,
             right: None,
             operand: Some(Box::new(operand)),
-            expr: None,
+            exprs: None,
+            context: None,
         }
     }
 
@@ -127,7 +132,8 @@ impl AST {
             left: Some(Box::new(left)),
             right: Some(Box::new(right)),
             operand: None,
-            expr: None,
+            exprs: None,
+            context: None,
         }
     }
 
@@ -136,7 +142,7 @@ impl AST {
         info: NodeInfo,
         type_: Rc<Type>,
         frame_size: usize,
-        expr_vec: Vec<AST>,
+        context: AST,
     ) -> AST {
         AST {
             kind: ASTKind::FunctionImplementation((func_name.to_string(), frame_size)),
@@ -145,7 +151,26 @@ impl AST {
             left: None,
             right: None,
             operand: None,
-            expr: Some(expr_vec),
+            exprs: None,
+            context: Some(Box::new(context)),
+        }
+    }
+
+    fn new_expressions_ast(
+        info: NodeInfo,
+        type_: Rc<Type>,
+        exprs: Vec<AST>,
+        context: Option<Box<AST>>,
+    ) -> AST {
+        AST {
+            kind: ASTKind::Expressions,
+            info,
+            type_,
+            left: None,
+            right: None,
+            operand: None,
+            exprs: Some(exprs),
+            context,
         }
     }
 }
@@ -205,7 +230,7 @@ fn ast_primary(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
             nodes.consume().unwrap();
             return add_ast;
         } else {
-            output_unexpected_node_err(nodes);
+            output_unclosed_node_err(nodes);
         }
     } else {
         output_unexpected_node_err(nodes);
@@ -355,8 +380,63 @@ fn ast_assign(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
     }
 }
 
+// expr = assign | exprs
 fn ast_expr(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
-    ast_assign(nodes, definitions)
+    if nodes.expect_symbol(Symbol::LeftCurlyBracket) {
+        ast_exprs(nodes, definitions)
+    } else {
+        ast_assign(nodes, definitions)
+    }
+}
+
+// exprs = "{" (expr ";") *  + (expr)? "}"
+fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
+    let mut exprs: Vec<AST> = vec![];
+
+    if !nodes.expect_symbol(Symbol::LeftCurlyBracket) {
+        output_unexpected_node_err(nodes);
+    }
+
+    // consume "{"
+    nodes.consume().unwrap();
+    // ローカル変数のネストを深くする
+    definitions.enter_new_local_scope();
+
+    let mut exd_context: Option<Box<AST>> = None; // {expr; expr; expr} の";"で閉じられていない最後のexpr
+                                                  // "}"が登場するまで
+    while !nodes.expect_symbol(Symbol::RightCurlyBracket) {
+        if nodes.is_empty() {
+            output_unclosed_node_err(nodes);
+        }
+        let expr = ast_expr(nodes, definitions);
+        if nodes.expect_symbol(Symbol::RightCurlyBracket) {
+            exd_context = Some(Box::new(expr));
+        } else if nodes.expect_symbol(Symbol::SemiColon) {
+            // consume ";"
+            nodes.consume().unwrap();
+            exprs.push(expr);
+        } else if expr.kind == ASTKind::Expressions {
+            // 複文のときはセミコロン不要
+            exprs.push(expr);
+        } else {
+            output_unexpected_node_err(nodes);
+        }
+    }
+    // ローカル変数のスコープを抜ける
+    definitions.exit_current_local_scope();
+
+    // "}" の位置を複文の情報とする
+    let exprs_info = nodes.consume().unwrap();
+    let exprs_type; // 複文が返す型情報
+    if let Some(context) = &exd_context {
+        exprs_type = context.type_.clone();
+    } else {
+        // 何も返さない場合はvoid型にしておく
+        exprs_type = definitions.get_type("void").unwrap();
+    }
+
+    let exprs_ast = AST::new_expressions_ast(exprs_info, exprs_type, exprs, exd_context);
+    exprs_ast
 }
 
 fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions) -> AST {
@@ -365,29 +445,17 @@ fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions)
     let main_func = Function::new("main", None, None);
     let func_type = definitions.declear_function("main", main_func).unwrap();
     let info = NodeInfo::new(0, 0, 0);
-    let mut expr_vec: Vec<AST> = vec![];
 
     definitions.initialize_local_scope();
-    definitions.enter_new_local_scope();
-
-    let expr_ast = ast_expr(nodes, definitions);
-    expr_vec.push(expr_ast);
-
-    // 本来は関数実装終了までだが, 今は;の間ループにする
-    //while !nodes.expect_symbol(Symbol::RightCurlyBracket) {
-    while nodes.expect_symbol(Symbol::SemiColon) {
-        nodes.consume().unwrap();
-        if nodes.is_empty() {
-            break;
-        }
-        let expr_ast = ast_expr(nodes, definitions);
-        expr_vec.push(expr_ast);
-    }
-
-    definitions.exit_current_local_scope();
+    let expfunc_context_ast = ast_exprs(nodes, definitions);
     let frame_size = definitions.get_local_val_frame_size();
-    let func_ast =
-        AST::new_function_implementation_ast("main", info, func_type, frame_size, expr_vec);
+    let func_ast = AST::new_function_implementation_ast(
+        "main",
+        info,
+        func_type,
+        frame_size,
+        expfunc_context_ast,
+    );
     func_ast
 }
 

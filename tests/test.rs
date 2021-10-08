@@ -115,3 +115,8 @@ fn assign_test() {
 fn expressions_test() {
     do_test("expressions");
 }
+
+#[test]
+fn brackets_test() {
+    do_test("brackets");
+}

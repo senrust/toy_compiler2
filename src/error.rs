@@ -58,6 +58,27 @@ pub fn exit_no_token_err() -> ! {
     exit(-1);
 }
 
+fn unclosed_node_err(info: &NodeInfo) -> ! {
+    print_node_error_info(NodeError::UnClosedError, info);
+    exit(-1);
+}
+
+fn unclosed_nodeend_err(info: &NodeInfo) -> ! {
+    print_node_error_info(NodeError::UnClosedEndError, info);
+    exit(-1);
+}
+
+pub fn output_unclosed_node_err(nodes: &Nodes) -> ! {
+    let err_node;
+    if nodes.is_empty() {
+        err_node = nodes.get_tail().unwrap();
+        unclosed_nodeend_err(&err_node.info);
+    } else {
+        err_node = nodes.get().unwrap();
+        unclosed_node_err(&err_node.info);
+    }
+}
+
 pub fn output_unexpected_node_err(nodes: &Nodes) -> ! {
     // nodesが何もないときはnodes作成時にerrorとするのでunwrap可能
     let err_node = nodes.get().unwrap();

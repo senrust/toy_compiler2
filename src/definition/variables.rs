@@ -1,13 +1,13 @@
 use crate::definition::types::Type;
 use std::{collections::HashMap, rc::Rc};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct GlobalVariable {
     pub name: String,
     pub type_: Rc<Type>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct LocalVariable {
     scope_depth: usize,
     pub name: String,
@@ -15,7 +15,7 @@ pub struct LocalVariable {
     pub type_: Rc<Type>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Variable {
     GlobalVal(Rc<GlobalVariable>),
     LocalVal(Rc<LocalVariable>),
@@ -44,10 +44,10 @@ struct LocalScope {
 pub struct VariableDeclearations {
     global_vals: HashMap<String, Rc<GlobalVariable>>,
     local_vals: HashMap<String, Rc<LocalVariable>>,
-    local_scopes: Vec<LocalScope>,
+    local_scopes: Option<Vec<LocalScope>>,
     current_frame_offset: usize,
     max_frame_offset: usize,
-    local_scope_depth: usize,
+    local_scope_depth: Option<usize>,
     hidden_local: HashMap<String, Vec<Rc<LocalVariable>>>,
 }
 
@@ -56,10 +56,10 @@ impl VariableDeclearations {
         VariableDeclearations {
             global_vals: HashMap::new(),
             local_vals: HashMap::new(),
-            local_scopes: vec![],
+            local_scopes: None,
             current_frame_offset: 8, // rbp分加わる
             max_frame_offset: 8,     // rbp分加わる
-            local_scope_depth: 0,
+            local_scope_depth: None,
             hidden_local: HashMap::new(),
         }
     }
@@ -85,10 +85,14 @@ impl VariableDeclearations {
 
     // ローカル変数を現在のスコープで宣言
     pub fn declear_local_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
+        if self.local_scope_depth.is_none() {
+            return Err(());
+        }
+
         // すでに同じローカル変数名が登録されている場合はそのローカル変数をhidden_localに対比させる
         if let Some(same_name_val) = self.local_vals.remove(name) {
             // 現在のスコープですでに宣言されている場合はエラー
-            if self.local_scope_depth == same_name_val.scope_depth {
+            if self.local_scope_depth.unwrap() == same_name_val.scope_depth {
                 return Err(());
             } else {
                 // すでに同じ変数名が複数宣言され, 秘匿済みの場合
@@ -113,11 +117,13 @@ impl VariableDeclearations {
 
         // ローカル変数を必要な情報を追加して登録
         let val_size = type_.size;
-        self.local_scopes[self.local_scope_depth]
+        let local_scopes = self.local_scopes.as_mut().unwrap();
+        let local_scope_depth = self.local_scope_depth.unwrap();
+        local_scopes[local_scope_depth]
             .scope_val_names
             .push(name.to_string());
         let local_val = LocalVariable {
-            scope_depth: self.local_scope_depth,
+            scope_depth: local_scope_depth,
             name: name.to_string(),
             frame_offset: self.current_frame_offset,
             type_,
@@ -143,17 +149,28 @@ impl VariableDeclearations {
 
     // ローカル変数スコープに入る
     pub fn enter_new_local_scope(&mut self) {
+        if let Some(old_depth) = self.local_scope_depth {
+            self.local_scope_depth = Some(old_depth + 1);
+        } else {
+            self.local_scope_depth = Some(0);
+            self.local_scopes = Some(vec![]);
+        }
+
         let new_scope = LocalScope {
             frame_offset: self.current_frame_offset,
             scope_val_names: vec![],
         };
-        self.local_scopes.push(new_scope);
-        self.local_scope_depth = self.local_scopes.len() - 1;
+        self.local_scopes.as_mut().unwrap().push(new_scope);
     }
 
     // 現在の(=最も深い)ローカル変数スコープから抜ける
     pub fn exit_current_local_scope(&mut self) {
-        if let Some(exit_scope) = self.local_scopes.pop() {
+        if let None = self.local_scopes {
+            return;
+        }
+
+        let local_scopes = self.local_scopes.as_mut().unwrap();
+        if let Some(exit_scope) = local_scopes.pop() {
             // スタックフレームサイズをスコープ開始時に戻す
             self.current_frame_offset = exit_scope.frame_offset;
             // 脱出するスコープに登録されているローカル変数をローカル変数テーブルから削除する
@@ -172,15 +189,22 @@ impl VariableDeclearations {
                     }
                 }
             }
+            // スコープ深さをデクリメントする
+            if local_scopes.is_empty() {
+                self.local_scopes = None;
+                self.local_scope_depth = None;
+            } else {
+                self.local_scope_depth = Some(local_scopes.len() - 1);
+            }
         }
     }
 
     pub fn clear_local_val_scope(&mut self) {
         self.local_vals.clear();
-        self.local_scopes.clear();
+        self.local_scopes.take();
         self.current_frame_offset = 8; // rbp分
         self.max_frame_offset = 8;
-        self.local_scope_depth = 0;
+        self.local_scope_depth.take();
         self.hidden_local.clear();
     }
 }
