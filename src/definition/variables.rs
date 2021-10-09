@@ -1,10 +1,10 @@
-use crate::definition::types::Type;
+use crate::definition::types::DefinedType;
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Debug, PartialEq)]
 pub struct GlobalVariable {
     pub name: String,
-    pub type_: Rc<Type>,
+    pub type_: DefinedType,
 }
 
 #[derive(Debug, PartialEq)]
@@ -12,7 +12,7 @@ pub struct LocalVariable {
     scope_depth: usize,
     pub name: String,
     pub frame_offset: usize,
-    pub type_: Rc<Type>,
+    pub type_: DefinedType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,7 +22,7 @@ pub enum Variable {
 }
 
 impl Variable {
-    pub fn get_type(&self) -> Rc<Type> {
+    pub fn get_type(&self) -> DefinedType {
         match self {
             Variable::GlobalVal(global_val) => global_val.type_.clone(),
             Variable::LocalVal(local_val) => local_val.type_.clone(),
@@ -69,7 +69,7 @@ impl VariableDeclearations {
     }
 
     // グローバル変数を宣言
-    pub fn declear_global_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
+    pub fn declear_global_val(&mut self, name: &str, type_: DefinedType) -> Result<Variable, ()> {
         if self.global_vals.get(name).is_some() {
             return Err(());
         }
@@ -84,7 +84,7 @@ impl VariableDeclearations {
     }
 
     // ローカル変数を現在のスコープで宣言
-    pub fn declear_local_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
+    pub fn declear_local_val(&mut self, name: &str, type_: DefinedType) -> Result<Variable, ()> {
         if self.local_scope_depth.is_none() {
             return Err(());
         }

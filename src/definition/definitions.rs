@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::definition::{functions::*, number::*, types::*, variables::*};
 
 pub struct Definitions {
@@ -20,36 +18,39 @@ impl Definitions {
         }
     }
 
-    pub fn get_primitive_type(&self, num: &Number) -> Rc<Type> {
+    pub fn get_primitive_type(&self, num: &Number) -> DefinedType {
         self.type_.get_primitive_type(num)
     }
 
-    pub fn get_type(&self, name: &str) -> Result<Rc<Type>, ()> {
+    pub fn get_type(&self, name: &str) -> Result<DefinedType, ()> {
         self.type_.get_type(name)
     }
 
-    pub fn define_type(&mut self, name: &str, type_: Type) -> Result<Rc<Type>, ()> {
+    pub fn define_type(&mut self, name: &str, type_: Type) -> Result<DefinedType, ()> {
         self.type_.define_type(name, type_)
     }
 
-    pub fn get_function(&mut self, name: &str) -> Option<Rc<Function>> {
+    pub fn get_function(&mut self, name: &str) -> Option<DefinedFunction> {
         self.function.get_function(name)
     }
 
-    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Rc<Type>, ()> {
+    pub fn declear_function(
+        &mut self,
+        name: &str,
+        function: Function,
+    ) -> Result<DefinedFunction, ()> {
         if let Ok(func) = self.function.declear_function(name, function) {
-            let func_type = Type::new_fucntion(func);
-            Ok(Rc::new(func_type))
+            Ok(func)
         } else {
             Err(())
         }
     }
 
-    pub fn declear_global_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
+    pub fn declear_global_val(&mut self, name: &str, type_: DefinedType) -> Result<Variable, ()> {
         self.variable.declear_global_val(name, type_)
     }
 
-    pub fn declear_local_val(&mut self, name: &str, type_: Rc<Type>) -> Result<Variable, ()> {
+    pub fn declear_local_val(&mut self, name: &str, type_: DefinedType) -> Result<Variable, ()> {
         self.variable.declear_local_val(name, type_)
     }
 

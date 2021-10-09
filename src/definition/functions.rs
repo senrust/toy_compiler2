@@ -1,15 +1,15 @@
-use super::types::Type;
+use super::types::DefinedType;
 use std::{collections::HashMap, ops::Deref, rc::Rc};
 
 #[derive(Debug)]
 pub struct Function {
     name: String,
-    args: Option<Vec<Rc<Type>>>,
-    ret: Option<Rc<Type>>,
+    args: Option<Vec<DefinedType>>,
+    ret: Option<DefinedType>,
 }
 
 impl Function {
-    pub fn new(name: &str, args: Option<Vec<Rc<Type>>>, ret: Option<Rc<Type>>) -> Self {
+    pub fn new(name: &str, args: Option<Vec<DefinedType>>, ret: Option<DefinedType>) -> Self {
         Function {
             name: name.to_string(),
             args,
@@ -49,8 +49,20 @@ impl PartialEq for Function {
     }
 }
 
+// 関数定義はRc<Function>型で使用するが,
+// ユーザー側でFunction型を作成し, Rc化すると循環参照が発生する可能性がある
+// そのため関数型はFunctionDefinitionsに登録し, その戻り値のDefinedFunction型の使用を強制させる
+#[derive(Debug, PartialEq, Clone)]
+pub struct DefinedFunction(Rc<Function>);
+
+impl DefinedFunction {
+    fn new(func: Function) -> Self {
+        Self(Rc::new(func))
+    }
+}
+
 pub struct FunctionDefinitions {
-    pub dict: HashMap<String, Rc<Function>>,
+    pub dict: HashMap<String, DefinedFunction>,
 }
 
 impl FunctionDefinitions {
@@ -60,20 +72,25 @@ impl FunctionDefinitions {
         }
     }
 
-    pub fn get_function(&mut self, name: &str) -> Option<Rc<Function>> {
+    pub fn get_function(&mut self, name: &str) -> Option<DefinedFunction> {
         self.dict.get(name).cloned()
     }
 
-    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Rc<Function>, ()> {
+    pub fn declear_function(
+        &mut self,
+        name: &str,
+        function: Function,
+    ) -> Result<DefinedFunction, ()> {
         // 同じ関数の複数回宣言は許可する
         if let Some(exist_function) = self.dict.get(name) {
-            if *exist_function.deref() == function {
+            if *exist_function.deref().0 == function {
                 Ok(exist_function.clone())
             } else {
                 Err(())
             }
         } else {
-            self.dict.insert(name.to_string(), Rc::new(function));
+            self.dict
+                .insert(name.to_string(), DefinedFunction::new(function));
             Ok(self.dict.get(name).unwrap().clone())
         }
     }
