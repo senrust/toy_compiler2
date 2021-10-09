@@ -1,8 +1,8 @@
 use std::process::exit;
 
-use crate::SOURCE_TXT;
 use crate::token::parser::*;
 use crate::token::token::*;
+use crate::SOURCE_TXT;
 
 pub fn exit_no_token_err() -> ! {
     eprintln!("error: no valid token");
@@ -19,7 +19,12 @@ pub fn exit_parser_error(err: ParserError, parser: &Parser) -> ! {
     let mut error_cur = " ".repeat(parser.pos);
     error_cur.push('^');
     eprintln!("{}", error_cur);
-    eprintln!("line{}, pos{}, error: {}", parser.line + 1, parser.pos + 1, err);
+    eprintln!(
+        "line{}, pos{}, error: {}",
+        parser.line + 1,
+        parser.pos + 1,
+        err
+    );
     exit(-1);
 }
 
@@ -54,7 +59,6 @@ pub fn unexpected_token_err(info: &TokenInfo) -> ! {
     print_token_error_info(TokenError::UnexpectTokenError, info);
     exit(-1);
 }
-
 
 fn unclosed_token_err(info: &TokenInfo) -> ! {
     print_token_error_info(TokenError::UnClosedError, info);

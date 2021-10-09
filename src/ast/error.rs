@@ -1,8 +1,8 @@
 use std::fmt;
 use std::process::exit;
 
-use crate::SOURCE_TXT;
 use crate::ast::ast::{Ast, AstKind};
+use crate::SOURCE_TXT;
 
 pub enum AstError {
     UnExpectedAstKind(AstKind, String),

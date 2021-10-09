@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 mod ast;
 mod definition;
-mod token;
 mod output;
+mod token;
 
 use std::env;
 use std::path::Path;

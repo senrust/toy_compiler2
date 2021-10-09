@@ -333,10 +333,7 @@ fn get_symbol(parse_line: &mut LineParser, token_chars: &mut Vec<char>) {
     get_mult_symbol(parse_line, token_chars);
 }
 
-fn get_quote_text(
-    parse_line: &mut LineParser,
-    rawtoken_chars: &mut Vec<char>,
-) -> Result<bool, ()> {
+fn get_quote_text(parse_line: &mut LineParser, rawtoken_chars: &mut Vec<char>) -> Result<bool, ()> {
     let head_ch = rawtoken_chars[0];
     let mut last_ch = parse_line.peek_char();
     while parse_line.has_char() {
@@ -390,10 +387,7 @@ pub fn parse_file(filepath: &Path) -> Vec<RawToken> {
                         }
                         Err(()) => {
                             let err_token = rawtoken_chars.iter().collect::<String>();
-                            exit_parser_error(
-                                ParserError::InvalidIdentifiler(err_token),
-                                &parser,
-                            );
+                            exit_parser_error(ParserError::InvalidIdentifiler(err_token), &parser);
                         }
                     }
                 }
@@ -414,18 +408,18 @@ pub fn parse_file(filepath: &Path) -> Vec<RawToken> {
                     }
                     Err(()) => {
                         let err_token = rawtoken_chars.iter().collect::<String>();
-                        exit_parser_error(
-                            ParserError::InvalidIdentifiler(err_token),
-                            &parser,
-                        );
+                        exit_parser_error(ParserError::InvalidIdentifiler(err_token), &parser);
                     }
                 },
                 ParserState::QuoteText => {
                     match get_quote_text(&mut parse_line, &mut rawtoken_chars) {
                         Ok(closed) => {
                             if closed {
-                                let rawtoken =
-                                RawToken::new(&rawtoken_chars, &parser, RawTokenKind::QuoteText);
+                                let rawtoken = RawToken::new(
+                                    &rawtoken_chars,
+                                    &parser,
+                                    RawTokenKind::QuoteText,
+                                );
                                 rawtokens.push(rawtoken);
                                 parser.state = ParserState::Empty;
                             }
@@ -445,16 +439,13 @@ pub fn parse_file(filepath: &Path) -> Vec<RawToken> {
                     match get_identifier(&mut parse_line, &mut rawtoken_chars) {
                         Ok(()) => {
                             let token =
-                            RawToken::new(&rawtoken_chars, &parser, RawTokenKind::Identifier);
+                                RawToken::new(&rawtoken_chars, &parser, RawTokenKind::Identifier);
                             rawtokens.push(token);
                             parser.state = ParserState::Empty;
                         }
                         Err(()) => {
                             let err_token = rawtoken_chars.iter().collect::<String>();
-                            exit_parser_error(
-                                ParserError::InvalidIdentifiler(err_token),
-                                &parser,
-                            );
+                            exit_parser_error(ParserError::InvalidIdentifiler(err_token), &parser);
                         }
                     }
                 }

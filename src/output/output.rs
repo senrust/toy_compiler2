@@ -278,11 +278,6 @@ fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         output_ast(&mut expr_ast, buf);
         buf.output_pop("rax");
     }
-
-    // 複文の最後にカンマがない文が存在する場合
-    if let Some(ast) = ast.context.take().as_mut() {
-        output_ast(ast, buf);
-    }
 }
 
 // return文のコンパイル

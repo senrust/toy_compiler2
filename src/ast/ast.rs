@@ -458,7 +458,6 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     // ローカル変数のネストを深くする
     definitions.enter_new_local_scope();
 
-    let exd_context: Option<Box<Ast>> = None;
     while !tokens.expect_symbol(Symbol::RightCurlyBracket) {
         if tokens.is_empty() {
             output_unclosed_token_err(tokens);
@@ -483,14 +482,8 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     // "}" の位置を複文の情報とする
     let exprs_info = tokens.consume().unwrap();
     let exprs_type; // 複文が返す型情報
-    if let Some(context) = &exd_context {
-        exprs_type = context.type_.clone();
-    } else {
-        // 何も返さない場合はvoid型にしておく
-        exprs_type = definitions.get_type("void").unwrap();
-    }
-
-    Ast::new_expressions_ast(exprs_info, exprs_type, exprs, exd_context)
+    exprs_type = definitions.get_type("void").unwrap();
+    Ast::new_expressions_ast(exprs_info, exprs_type, exprs, None)
 }
 
 // 関数の引数を取得します
