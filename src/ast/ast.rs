@@ -30,6 +30,7 @@ pub enum Control {
     Return,
     If,
     For,
+    While,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -388,7 +389,8 @@ pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 //        "return" assign
 //        "if"  "(" assign ")" expr ("else" expr)?
 //        "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//        assign |
+//        "while"  "(" assign ")" expr
+//        assign |(";"を要求しないので注意)
 pub fn ast_expr(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_symbol(Symbol::LeftCurlyBracket) {
         ast_exprs(tokens, definitions)
@@ -398,6 +400,8 @@ pub fn ast_expr(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         ast_if(tokens, definitions)
     } else if tokens.expect_reserved(Reserved::For) {
         ast_for(tokens, definitions)
+    } else if tokens.expect_reserved(Reserved::While) {
+        ast_while(tokens, definitions)
     } else {
         ast_assign(tokens, definitions)
     }
@@ -431,6 +435,7 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
                 AstKind::Expressions => exprs.push(expr),
                 AstKind::Control(Control::If) => exprs.push(expr),
                 AstKind::Control(Control::For) => exprs.push(expr),
+                AstKind::Control(Control::While) => exprs.push(expr),
                 _ => output_unexpected_token_err(tokens),
             }
         }

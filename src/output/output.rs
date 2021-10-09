@@ -92,7 +92,7 @@ pub fn output_function_prelude<T: Write>(
 pub fn output_function_epilogue<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output("    mov rsp, rbp");
     buf.output_pop("rbp");
-    buf.output("ret");
+    buf.output("    ret");
 }
 
 fn push_number<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
@@ -290,9 +290,7 @@ pub fn output_expr_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
             output_operation_ast(ast, buf);
             buf.output_pop("rax");
         }
-        AstKind::Control(Control::Return) => execute_return(ast, buf),
-        AstKind::Control(Control::If) => execute_if(ast, buf),
-        AstKind::Control(Control::For) => execute_for(ast, buf),
+        AstKind::Control(_) => output_control_ast(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
         _ => unsupported_ast_err(ast),
     }
@@ -318,6 +316,7 @@ pub fn output_control_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         AstKind::Control(Control::Return) => execute_return(ast, buf),
         AstKind::Control(Control::If) => execute_if(ast, buf),
         AstKind::Control(Control::For) => execute_for(ast, buf),
+        AstKind::Control(Control::While) => execute_while(ast, buf),
         _ => unsupported_ast_err(ast),
     }
 }

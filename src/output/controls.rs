@@ -71,7 +71,7 @@ pub fn execute_for<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         output_expr_ast(condition_ast, buf);
         // 条件式が成立する場合はif文のEndまでジャンプ
         buf.output("    cmp rax, 1");
-        buf.output(&format!("    je .LabelForend{}", buf.label_index));
+        buf.output(&format!("    je .LabelForEnd{}", buf.label_index));
     }
     // for内容
     output_expr_ast(&mut for_context, buf);
@@ -80,6 +80,31 @@ pub fn execute_for<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         output_expr_ast(condition_ast, buf);
     }
     buf.output(&format!("    jmp .LabelForBegin{}", buf.label_index));
-    buf.output(&format!(".LabelForend{}:", buf.label_index));
+    buf.output(&format!(".LabelForEnd{}:", buf.label_index));
+    buf.increment_label();
+}
+
+// while文のコンパイル
+// while文はcontextに条件式,
+// expr[0]にwhile内容がある
+pub fn execute_while<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    match ast.kind {
+        AstKind::Control(Control::While) => (),
+        _ => unexpected_ast_err(ast, "while"),
+    }
+
+    let mut while_condition = ast.context.take().unwrap();
+    let while_context = &mut ast.exprs.take().unwrap()[0];
+
+    buf.output(&format!(".LabelWhileBegin{}:", buf.label_index));
+    // 条件式
+    output_ast(&mut while_condition, buf);
+    // 条件式が成立しない場合はWhile文のEndまでジャンプ
+    buf.output("    cmp rax, 0");
+    buf.output(&format!("    je .LabelWhileEnd{}", buf.label_index));
+    // while内容
+    output_expr_ast(while_context, buf);
+    buf.output(&format!("    jmp .LabelWhileBegin{}", buf.label_index));
+    buf.output(&format!(".LabelWhileEnd{}:", buf.label_index));
     buf.increment_label();
 }

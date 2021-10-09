@@ -130,3 +130,8 @@ fn if_test() {
 fn for_test() {
     do_test("for");
 }
+
+#[test]
+fn while_test() {
+    do_test("while");
+}

@@ -86,7 +86,7 @@ pub fn ast_for(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         if tokens.expect_symbol(Symbol::SemiColon) {
             for_contitions.push(None);
         } else {
-            let inilaize_ast = ast_expr(tokens, definitions);
+            let inilaize_ast = ast_assign(tokens, definitions);
             for_contitions.push(Some(inilaize_ast));
         }
         if i != 2 {
@@ -112,5 +112,38 @@ pub fn ast_for(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         Some(Box::new(for_context)),
         None,
         Some(for_contitions),
+    )
+}
+
+// while = "while"  "(" assign ")" expr
+// whileは条件をcontextへ, exprs[0]にwhile内容を格納
+pub fn ast_while(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    if !tokens.expect_reserved(Reserved::While) {
+        output_unexpected_token_err(tokens);
+    }
+
+    // consume "while"
+    let while_info = tokens.consume().unwrap();
+    let while_type = definitions.get_type("void").unwrap();
+    let mut while_vec: Vec<Ast> = vec![];
+
+    if !tokens.expect_symbol(Symbol::LeftParenthesis) {
+        output_unexpected_token_err(tokens);
+    }
+    tokens.consume().unwrap(); // consume "("
+    let while_condition = ast_assign(tokens, definitions);
+    if !tokens.expect_symbol(Symbol::RightParenthesis) {
+        output_unexpected_token_err(tokens);
+    }
+    tokens.consume().unwrap(); // consume ")"
+    let while_expr = ast_expr(tokens, definitions);
+    while_vec.push(while_expr);
+    Ast::new_control_ast(
+        while_info,
+        while_type,
+        Control::While,
+        Some(Box::new(while_condition)),
+        Some(while_vec),
+        None,
     )
 }
