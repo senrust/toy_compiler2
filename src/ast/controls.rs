@@ -147,3 +147,16 @@ pub fn ast_while(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         None,
     )
 }
+
+// break
+// breakして脱出するラベルはコンパイラ側で決定する
+pub fn ast_break(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    if !tokens.expect_reserved(Reserved::Break) {
+        output_unexpected_token_err(tokens);
+    }
+
+    // consume "break"
+    let break_info = tokens.consume().unwrap();
+    let break_type = definitions.get_type("void").unwrap();
+    Ast::new_control_ast(break_info, break_type, Control::Break, None, None, None)
+}

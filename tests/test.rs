@@ -135,3 +135,8 @@ fn for_test() {
 fn while_test() {
     do_test("while");
 }
+
+#[test]
+fn break_test() {
+    do_test("break");
+}

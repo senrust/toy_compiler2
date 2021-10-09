@@ -5,6 +5,7 @@ use crate::ast::ast::{Ast, AstKind};
 use crate::SOURCE_TXT;
 
 pub enum AstError {
+    InValidDirection(String),
     UnExpectedAstKind(AstKind, String),
     UnSupportedAstKind(AstKind),
     UnAssignableAstKind,
@@ -13,6 +14,9 @@ pub enum AstError {
 impl fmt::Display for AstError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            AstError::InValidDirection(direction) => {
+                write!(f, "can not use {} here", direction)
+            }
             AstError::UnExpectedAstKind(ast_type, expected_type) => {
                 write!(
                     f,
@@ -48,6 +52,11 @@ fn print_ast_error_info(ast: &Ast, err: AstError) {
     if cfg!(debug_assertions) {
         eprintln!("Err Ast: {:?}", ast);
     }
+}
+
+pub fn invalid_direction_err(ast: &Ast, direction: &str) -> ! {
+    print_ast_error_info(ast, AstError::InValidDirection(direction.to_string()));
+    exit(-1);
 }
 
 pub fn unexpected_ast_err(ast: &Ast, expected_kind: &str) -> ! {

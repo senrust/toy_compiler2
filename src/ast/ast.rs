@@ -31,6 +31,7 @@ pub enum Control {
     If,
     For,
     While,
+    Break,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -390,6 +391,7 @@ pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 //        "if"  "(" assign ")" expr ("else" expr)?
 //        "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //        "while"  "(" assign ")" expr
+//        "break"
 //        assign |(";"を要求しないので注意)
 pub fn ast_expr(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_symbol(Symbol::LeftCurlyBracket) {
@@ -402,6 +404,8 @@ pub fn ast_expr(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         ast_for(tokens, definitions)
     } else if tokens.expect_reserved(Reserved::While) {
         ast_while(tokens, definitions)
+    } else if tokens.expect_reserved(Reserved::Break) {
+        ast_break(tokens, definitions)
     } else {
         ast_assign(tokens, definitions)
     }
@@ -430,7 +434,7 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             tokens.consume().unwrap();
             exprs.push(expr);
         } else {
-            // 複文, if文はセミコロン不要
+            // 複文, if, for, while文はセミコロン不要
             match &expr.kind {
                 AstKind::Expressions => exprs.push(expr),
                 AstKind::Control(Control::If) => exprs.push(expr),

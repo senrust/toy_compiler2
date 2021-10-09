@@ -8,10 +8,17 @@ use crate::definition::number::Number;
 use crate::definition::variables::*;
 use crate::output::controls::*;
 
+#[derive(PartialEq, Debug)]
+pub enum LoopKind {
+    For,
+    While,
+}
+
 pub struct OutputBuffer<T: Write> {
     buf: T,
     pub label_index: usize,
     stack_alignment: i32,
+    break_info: Vec<(usize, LoopKind)>,
 }
 
 impl<T: Write> OutputBuffer<T> {
@@ -20,11 +27,36 @@ impl<T: Write> OutputBuffer<T> {
             buf,
             label_index: 0,
             stack_alignment: 0, // 関数呼び出し用に使用中のスタックサイズを把握する
-                                // 関数呼び出し時はスタックのアライメントが16バイトである必要があるため,
-                                // 16バイトアライメントでの位置を記録する
-                                // stack_alignment = 4　ならば, 関数呼び出し時は 16 -4 = 12 バイト,
-                                // スタックを増やす必要がある
+            // 関数呼び出し時はスタックのアライメントが16バイトである必要があるため,
+            // 16バイトアライメントでの位置を記録する
+            // stack_alignment = 4　ならば, 関数呼び出し時は 16 -4 = 12 バイト,
+            // スタックを増やす必要がある
+            break_info: vec![],
         }
+    }
+
+    pub fn enter_loop_control(&mut self, type_: LoopKind) {
+        self.break_info.push((self.label_index, type_));
+    }
+
+    pub fn exit_loop_control(&mut self) {
+        self.break_info.pop();
+    }
+
+    pub fn get_break_label(&mut self) -> Result<String, ()> {
+        if let Some((label_index, type_)) = self.break_info.last() {
+            if *type_ == LoopKind::For {
+                Ok(format!("    jmp .LabelForEnd{}", label_index))
+            } else {
+                Ok(format!("    jmp .LabelWhileEnd{}", label_index))
+            }
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn get_label_index(&self) -> usize {
+        self.label_index
     }
 
     pub fn increment_label(&mut self) {
@@ -317,6 +349,7 @@ pub fn output_control_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         AstKind::Control(Control::If) => execute_if(ast, buf),
         AstKind::Control(Control::For) => execute_for(ast, buf),
         AstKind::Control(Control::While) => execute_while(ast, buf),
+        AstKind::Control(Control::Break) => execute_break(ast, buf),
         _ => unsupported_ast_err(ast),
     }
 }
