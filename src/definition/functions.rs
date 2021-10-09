@@ -1,29 +1,20 @@
-use super::types::DefinedType;
-use std::{collections::HashMap, ops::Deref, rc::Rc};
+use super::types::Type;
+use std::{collections::HashMap, ops::Deref};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Function {
-    name: String,
-    args: Option<Vec<DefinedType>>,
-    ret: Option<DefinedType>,
+    args: Option<Vec<Type>>,
+    ret: Option<Type>,
 }
 
 impl Function {
-    pub fn new(name: &str, args: Option<Vec<DefinedType>>, ret: Option<DefinedType>) -> Self {
-        Function {
-            name: name.to_string(),
-            args,
-            ret,
-        }
+    pub fn new(args: Option<Vec<Type>>, ret: Option<Type>) -> Self {
+        Function { args, ret }
     }
 }
 
 impl PartialEq for Function {
     fn eq(&self, rhs: &Self) -> bool {
-        if self.name != rhs.name {
-            return false;
-        }
-
         // 引数の数が異なる
         if self.args.is_some() && rhs.args.is_some() {
             let self_args = self.args.as_ref().unwrap();
@@ -49,20 +40,8 @@ impl PartialEq for Function {
     }
 }
 
-// 関数定義はRc<Function>型で使用するが,
-// ユーザー側でFunction型を作成し, Rc化すると循環参照が発生する可能性がある
-// そのため関数型はFunctionDefinitionsに登録し, その戻り値のDefinedFunction型の使用を強制させる
-#[derive(Debug, PartialEq, Clone)]
-pub struct DefinedFunction(Rc<Function>);
-
-impl DefinedFunction {
-    fn new(func: Function) -> Self {
-        Self(Rc::new(func))
-    }
-}
-
 pub struct FunctionDefinitions {
-    pub dict: HashMap<String, DefinedFunction>,
+    pub dict: HashMap<String, Function>,
 }
 
 impl FunctionDefinitions {
@@ -72,25 +51,20 @@ impl FunctionDefinitions {
         }
     }
 
-    pub fn get_function(&mut self, name: &str) -> Option<DefinedFunction> {
+    pub fn get_function(&mut self, name: &str) -> Option<Function> {
         self.dict.get(name).cloned()
     }
 
-    pub fn declear_function(
-        &mut self,
-        name: &str,
-        function: Function,
-    ) -> Result<DefinedFunction, ()> {
+    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Function, ()> {
         // 同じ関数の複数回宣言は許可する
         if let Some(exist_function) = self.dict.get(name) {
-            if *exist_function.deref().0 == function {
+            if *exist_function == function {
                 Ok(exist_function.clone())
             } else {
                 Err(())
             }
         } else {
-            self.dict
-                .insert(name.to_string(), DefinedFunction::new(function));
+            self.dict.insert(name.to_string(), function);
             Ok(self.dict.get(name).unwrap().clone())
         }
     }

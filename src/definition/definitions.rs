@@ -18,39 +18,40 @@ impl Definitions {
         }
     }
 
-    pub fn get_primitive_type(&self, num: &Number) -> DefinedType {
+    pub fn get_primitive_type(&self, num: &Number) -> Type {
         self.type_.get_primitive_type(num)
     }
 
-    pub fn get_type(&self, name: &str) -> Result<DefinedType, ()> {
+    pub fn get_type(&self, name: &str) -> Option<Type> {
         self.type_.get_type(name)
     }
 
-    pub fn define_type(&mut self, name: &str, type_: Type) -> Result<DefinedType, ()> {
+    pub fn define_type(&mut self, name: &str, type_: Type) -> Result<Type, ()> {
         self.type_.define_type(name, type_)
     }
 
-    pub fn get_function(&mut self, name: &str) -> Option<DefinedFunction> {
+    pub fn get_function(&mut self, name: &str) -> Option<Function> {
         self.function.get_function(name)
     }
 
-    pub fn declear_function(
-        &mut self,
-        name: &str,
-        function: Function,
-    ) -> Result<DefinedFunction, ()> {
-        if let Ok(func) = self.function.declear_function(name, function) {
-            Ok(func)
+    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Type, ()> {
+        if let Ok(_definedfunc) = self.function.declear_function(name, function.clone()) {
+            if let Some(func_type) = self.type_.get_type(name) {
+                Ok(func_type)
+            } else {
+                let func_type = Type::new_fucntion(function);
+                Ok(self.define_type(name, func_type).unwrap())
+            }
         } else {
             Err(())
         }
     }
 
-    pub fn declear_global_val(&mut self, name: &str, type_: DefinedType) -> Result<Variable, ()> {
+    pub fn declear_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
         self.variable.declear_global_val(name, type_)
     }
 
-    pub fn declear_local_val(&mut self, name: &str, type_: DefinedType) -> Result<Variable, ()> {
+    pub fn declear_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
         self.variable.declear_local_val(name, type_)
     }
 

@@ -64,10 +64,7 @@ impl Node {
     }
 
     pub fn expect_number(&self) -> bool {
-        match self.kind {
-            NodeKind::Number(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, NodeKind::Number(_))
     }
 
     pub fn get_interger(&self) -> Result<Number, ()> {
@@ -84,10 +81,7 @@ impl Node {
     }
 
     pub fn expect_identifier(&self) -> bool {
-        match self.kind {
-            NodeKind::Identifier(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, NodeKind::Identifier(_))
     }
 
     pub fn get_identifier(&self) -> Result<&String, ()> {
@@ -98,10 +92,7 @@ impl Node {
     }
 
     pub fn expect_rawstring(&self) -> bool {
-        match self.kind {
-            NodeKind::RawString(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, NodeKind::RawString(_))
     }
 
     pub fn get_rawstring(&self) -> Option<&String> {
@@ -113,13 +104,7 @@ impl Node {
 
     pub fn expect_reserved(&self, reserved: Reserved) -> bool {
         match self.kind {
-            NodeKind::Reserved(ref word) => {
-                if *word == reserved {
-                    true
-                } else {
-                    false
-                }
-            }
+            NodeKind::Reserved(ref word) => *word == reserved,
             _ => false,
         }
     }

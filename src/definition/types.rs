@@ -1,24 +1,9 @@
-use super::functions::DefinedFunction;
+use super::functions::Function;
 use crate::ast_maker::Ast;
 use crate::definition::number::Number;
-use std::{collections::HashMap, marker::PhantomData, ops::Deref, rc::Rc};
+use std::{collections::HashMap, marker::PhantomData, rc::Rc};
 
-#[derive(Debug)]
-pub struct SturctMember {
-    name: String,
-    type_: DefinedType,
-}
-
-impl SturctMember {
-    fn new(name: &str, type_: DefinedType) -> Self {
-        SturctMember {
-            name: name.to_string(),
-            type_,
-        }
-    }
-}
-
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum PrimitiveType {
     Void,
     U8,
@@ -33,17 +18,17 @@ pub enum PrimitiveType {
     F64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 // 型定義
 // 配列型でインデックスアクセスを行わない場合はポインタ型に変換されるようにする
 pub struct Type {
     pub size: usize,
     pub primitive: Option<PrimitiveType>,
-    pub pointer: Option<DefinedType>,
-    pub array: Option<DefinedType>,
+    pub pointer: Option<Rc<Type>>,
+    pub array: Option<(usize, Rc<Type>)>,
     pub struct_name: Option<String>,
-    pub struct_members: Option<Rc<HashMap<String, (usize, SturctMember)>>>,
-    pub function: Option<DefinedFunction>,
+    pub struct_members: Option<Rc<HashMap<String, (usize, Type)>>>,
+    pub function: Option<Rc<Function>>,
     _private: PhantomData<()>, // コンストラクタからのみ作成できるようにする
 }
 
@@ -102,11 +87,11 @@ impl Type {
         }
     }
 
-    pub fn new_pointer(type_: DefinedType) -> Self {
+    pub fn new_pointer(type_: Type) -> Self {
         Type {
             size: 8,
             primitive: None,
-            pointer: Some(type_),
+            pointer: Some(Rc::new(type_)),
             array: None,
             struct_name: None,
             struct_members: None,
@@ -118,12 +103,12 @@ impl Type {
     // サイズは配列全体のサイズ
     // 配列は右辺値になったときはポインタ型として振る舞うようにする
     // (これで良いかはわからない)
-    pub fn new_array(count: usize, type_: DefinedType) -> Self {
+    pub fn new_array(count: usize, type_: Type) -> Self {
         Type {
             size: count * type_.size,
             primitive: None,
             pointer: None,
-            array: Some(type_),
+            array: Some((count, Rc::new(type_))),
             struct_name: None,
             struct_members: None,
             function: None,
@@ -132,18 +117,18 @@ impl Type {
     }
 
     // 無名構造体は空文字列を渡す
-    pub fn new_stuct(name: &str, members: Vec<SturctMember>) -> Self {
+    pub fn new_stuct(name: &str, members: Vec<(&str, Type)>) -> Self {
         let mut offset: usize = 0;
-        let mut member_vec: HashMap<String, (usize, SturctMember)> = HashMap::new();
-        for member in members {
-            let member_size = member.type_.size;
+        let mut member_vec: HashMap<String, (usize, Type)> = HashMap::new();
+        for (name, member) in members {
+            let member_size = member.size;
             // このメンバーを加えることでアライメント境界を超える場合はオフセットをアライメント境界まで動かす
             // すでにアライメント境界のときは何もしない
             if offset % 8 != 0 && offset / 8 != (offset + member_size) / 8 {
                 offset += 8 - (offset % 8);
             }
 
-            member_vec.insert(member.name.clone(), (offset, member));
+            member_vec.insert(name.to_string(), (offset, member));
             offset += member_size;
         }
         Type {
@@ -161,7 +146,7 @@ impl Type {
     // サイズ8バイトで定義する
     // asigneeが関数型のときに正しい関数ポインタ定義かチェックする
     // (これで良いかはわからない)
-    pub fn new_fucntion(function: &DefinedFunction) -> Self {
+    pub fn new_fucntion(function: Function) -> Self {
         Type {
             size: 8,
             primitive: None,
@@ -169,7 +154,7 @@ impl Type {
             array: None,
             struct_name: None,
             struct_members: None,
-            function: Some(function.clone()),
+            function: Some(Rc::new(function)),
             _private: PhantomData,
         }
     }
@@ -178,34 +163,13 @@ impl Type {
         self.pointer.is_some()
     }
 
-    pub fn deref_pointer(&self) -> Option<DefinedType> {
+    pub fn deref_pointer(&self) -> Option<Rc<Type>> {
         self.pointer.as_ref().cloned()
     }
 }
 
-// Typeを手動で作成してRc;:newされてしまうと,
-// 循環参照が発生しうるので, コンパイラで使用する全ての型情報はTypesDefinitionsに登録されたものを使用する
-// そのために, Typeを作成したらTypesDefinitionsに登録し,
-// TypesDefinitionsから返されるCTypeでの使用を強制することで循環参照を防ぐ
-#[derive(Debug, PartialEq, Clone)]
-pub struct DefinedType(Rc<Type>);
-
-impl Deref for DefinedType {
-    type Target = Type;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0.deref()
-    }
-}
-
-impl DefinedType {
-    fn new(type_: Type) -> Self {
-        DefinedType(Rc::new(type_))
-    }
-}
-
 pub struct TypesDefinitions {
-    dict: HashMap<String, DefinedType>,
+    dict: HashMap<String, Type>,
 }
 
 impl TypesDefinitions {
@@ -239,36 +203,30 @@ impl TypesDefinitions {
     }
 
     fn register_type(&mut self, type_name: &str, type_: Type) {
-        self.dict
-            .insert(type_name.to_string(), DefinedType::new(type_));
+        self.dict.insert(type_name.to_string(), type_);
     }
 
-    pub fn get_primitive_type(&self, num_type: &Number) -> DefinedType {
+    pub fn get_primitive_type(&self, num_type: &Number) -> Type {
         match num_type {
             Number::U64(_) => self.dict["long"].clone(),
             Number::F64(_) => self.dict["double"].clone(),
         }
     }
 
-    pub fn get_type(&self, name: &str) -> Result<DefinedType, ()> {
-        if self.dict.contains_key(name) {
-            Ok(self.dict.get(name).unwrap().clone())
-        } else {
-            Err(())
-        }
+    pub fn get_type(&self, name: &str) -> Option<Type> {
+        self.dict.get(name).cloned()
     }
 
-    pub fn define_type(&mut self, name: &str, type_: Type) -> Result<DefinedType, ()> {
+    pub fn define_type(&mut self, name: &str, type_: Type) -> Result<Type, ()> {
         if self.dict.contains_key(name) {
             Err(())
         } else {
-            let defined_type = DefinedType::new(type_);
-            self.dict.insert(name.to_string(), defined_type.clone());
-            Ok(defined_type)
+            self.register_type(name, type_);
+            Ok(self.get_type(name).unwrap())
         }
     }
 }
 
-pub fn evaluate_binary_operation_type(left: &Ast, _right: &Ast) -> Result<DefinedType, ()> {
+pub fn evaluate_binary_operation_type(left: &Ast, _right: &Ast) -> Result<Type, ()> {
     Ok(left.type_.clone())
 }

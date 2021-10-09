@@ -1,9 +1,9 @@
 use crate::definition::definitions::Definitions;
-use crate::definition::functions::{DefinedFunction, Function};
+use crate::definition::functions::Function;
 use crate::definition::number::Number;
 use crate::definition::reservedwords::*;
 use crate::definition::symbols::*;
-use crate::definition::types::{evaluate_binary_operation_type, DefinedType, Type};
+use crate::definition::types::{evaluate_binary_operation_type, Type};
 use crate::definition::variables::*;
 use crate::error::*;
 use crate::token_interpreter::{NodeInfo, Nodes};
@@ -60,7 +60,7 @@ pub enum Control {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstKind {
     FunctionImplementation((String, usize)),
-    FuncionCall(DefinedFunction),
+    FuncionCall(String),
     Expressions,
     Operation(Operation),
     Control(Control),
@@ -72,7 +72,7 @@ pub enum AstKind {
 pub struct Ast {
     pub kind: AstKind,
     pub info: NodeInfo,
-    pub type_: DefinedType,
+    pub type_: Type,
     pub left: Option<Box<Ast>>,
     pub right: Option<Box<Ast>>,
     pub operand: Option<Box<Ast>>,
@@ -81,7 +81,7 @@ pub struct Ast {
 }
 
 impl Ast {
-    fn new_integer_ast(num: Number, info: NodeInfo, type_: DefinedType) -> Ast {
+    fn new_integer_ast(num: Number, info: NodeInfo, type_: Type) -> Ast {
         Ast {
             kind: AstKind::ImmidiateInterger(num),
             info,
@@ -94,7 +94,7 @@ impl Ast {
         }
     }
 
-    fn new_variable_ast(val: Variable, info: NodeInfo, type_: DefinedType) -> Ast {
+    fn new_variable_ast(val: Variable, info: NodeInfo, type_: Type) -> Ast {
         Ast {
             kind: AstKind::Variable(val),
             info,
@@ -110,7 +110,7 @@ impl Ast {
     fn new_single_operation_ast(
         operation: Operation,
         info: NodeInfo,
-        type_: DefinedType,
+        type_: Type,
         operand: Ast,
     ) -> Ast {
         Ast {
@@ -128,7 +128,7 @@ impl Ast {
     fn new_binary_operation_ast(
         operation: Operation,
         info: NodeInfo,
-        type_: DefinedType,
+        type_: Type,
         left: Ast,
         right: Ast,
     ) -> Ast {
@@ -147,7 +147,7 @@ impl Ast {
     fn new_function_implementation_ast(
         func_name: &str,
         info: NodeInfo,
-        type_: DefinedType,
+        type_: Type,
         frame_size: usize,
         context: Ast,
     ) -> Ast {
@@ -165,7 +165,7 @@ impl Ast {
 
     fn new_expressions_ast(
         info: NodeInfo,
-        type_: DefinedType,
+        type_: Type,
         exprs: Vec<Ast>,
         context: Option<Box<Ast>>,
     ) -> Ast {
@@ -183,7 +183,7 @@ impl Ast {
 
     fn new_control_ast(
         info: NodeInfo,
-        type_: DefinedType,
+        type_: Type,
         control: Control,
         context: Option<Box<Ast>>,
         exprs: Vec<Ast>,
@@ -521,7 +521,7 @@ fn ast_exprs(nodes: &mut Nodes, definitions: &mut Definitions) -> Ast {
 }
 
 // 関数の引数を取得します
-fn get_func_args(nodes: &mut Nodes, _definitions: &mut Definitions) -> Option<Vec<DefinedType>> {
+fn get_func_args(nodes: &mut Nodes, _definitions: &mut Definitions) -> Option<Vec<Type>> {
     if !nodes.expect_symbol(Symbol::LeftParenthesis) {
         output_unexpected_node_err(nodes);
     }
@@ -543,10 +543,8 @@ fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions)
     // 関数定義
     let (func_name, info) = nodes.consume_identifier().unwrap();
     let func_args = get_func_args(nodes, definitions);
-    let func = Function::new(&func_name, func_args, None);
-    let func = definitions.declear_function(&func_name, func).unwrap();
-    let func_type = Type::new_fucntion(&func);
-    let defined_type = definitions.define_type(&func_name, func_type).unwrap();
+    let func = Function::new(func_args, None);
+    let func_type = definitions.declear_function(&func_name, func).unwrap();
     // 関数実装ASTを作成
     definitions.initialize_local_scope();
     let expfunc_context_ast = ast_exprs(nodes, definitions);
@@ -555,7 +553,7 @@ fn ast_funcution_implementaion(nodes: &mut Nodes, definitions: &mut Definitions)
     Ast::new_function_implementation_ast(
         &func_name,
         info,
-        defined_type,
+        func_type,
         frame_size,
         expfunc_context_ast,
     )
