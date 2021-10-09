@@ -2,10 +2,10 @@ use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use crate::ast_maker::*;
+use crate::ast::ast::*;
+use crate::ast::error::*;
 use crate::definition::number::Number;
 use crate::definition::variables::*;
-use crate::error::*;
 
 struct OutputBuffer<T: Write> {
     buf: T,

@@ -36,10 +36,10 @@ fn make_binary(dir: &Path, assembley_path: &Path) {
 }
 
 fn do_compile(dir: &Path, source: &Path, output: &Path) {
-    let tokens = compiler::source_tokenizer::tokenize(source);
-    let nodes = compiler::token_interpreter::make_nodes(tokens);
-    let asts = compiler::ast_maker::make_asts(nodes);
-    compiler::output_assembly::output_assembly(asts, output);
+    let rawtokens = compiler::token::parser::parse_file(source);
+    let tokens = compiler::token::token::make_tokens(rawtokens);
+    let asts = compiler::ast::ast::make_asts(tokens);
+    compiler::output::output::output_assembly(asts, output);
     make_binary(dir, output);
 }
 

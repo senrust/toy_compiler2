@@ -1,5 +1,5 @@
 use super::functions::Function;
-use crate::ast_maker::Ast;
+use crate::ast::ast::Ast;
 use crate::definition::number::Number;
 use std::{collections::HashMap, marker::PhantomData, rc::Rc};
 

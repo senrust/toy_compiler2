@@ -1,9 +1,7 @@
 #![allow(dead_code)]
-pub mod ast_maker;
+pub mod ast;
+pub mod token;
 mod definition;
-mod error;
-pub mod output_assembly;
-pub mod source_tokenizer;
-pub mod token_interpreter;
+pub mod output;
 
 static mut SOURCE_TXT: Vec<String> = vec![];
