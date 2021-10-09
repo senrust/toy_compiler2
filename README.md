@@ -9,8 +9,11 @@
 ```
 main() {
     main () {
-    a = 10;
-    b = -5;
+    a;
+    b = 0;
+    for (a = 0; a == 10; a = a + 1){
+        b = b + 1;
+    }
     if (a + b != 5) {
         return 0;
     } else {

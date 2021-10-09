@@ -50,10 +50,10 @@ fn print_ast_error_info(ast: &Ast, err: AstError) {
     }
 }
 
-pub fn unexpected_ast_err(ast: &Ast, expected_kind: String) -> ! {
+pub fn unexpected_ast_err(ast: &Ast, expected_kind: &str) -> ! {
     print_ast_error_info(
         ast,
-        AstError::UnExpectedAstKind(ast.kind.clone(), expected_kind),
+        AstError::UnExpectedAstKind(ast.kind.clone(), expected_kind.to_string()),
     );
     exit(-1);
 }

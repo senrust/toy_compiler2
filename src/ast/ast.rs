@@ -1,3 +1,4 @@
+use crate::ast::controls::*;
 use crate::definition::definitions::Definitions;
 use crate::definition::functions::Function;
 use crate::definition::number::Number;
@@ -28,6 +29,7 @@ pub enum Operation {
 pub enum Control {
     Return,
     If,
+    For,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -51,6 +53,7 @@ pub struct Ast {
     pub operand: Option<Box<Ast>>,
     pub exprs: Option<Vec<Ast>>,
     pub context: Option<Box<Ast>>,
+    pub other: Option<Vec<Option<Ast>>>,
 }
 
 impl Ast {
@@ -64,6 +67,7 @@ impl Ast {
             operand: None,
             exprs: None,
             context: None,
+            other: None,
         }
     }
 
@@ -77,6 +81,7 @@ impl Ast {
             operand: None,
             exprs: None,
             context: None,
+            other: None,
         }
     }
 
@@ -95,6 +100,7 @@ impl Ast {
             operand: Some(Box::new(operand)),
             exprs: None,
             context: None,
+            other: None,
         }
     }
 
@@ -114,6 +120,7 @@ impl Ast {
             operand: None,
             exprs: None,
             context: None,
+            other: None,
         }
     }
 
@@ -133,6 +140,7 @@ impl Ast {
             operand: None,
             exprs: None,
             context: Some(Box::new(context)),
+            other: None,
         }
     }
 
@@ -151,15 +159,17 @@ impl Ast {
             operand: None,
             exprs: Some(exprs),
             context,
+            other: None,
         }
     }
 
-    fn new_control_ast(
+    pub fn new_control_ast(
         info: TokenInfo,
         type_: Type,
         control: Control,
         context: Option<Box<Ast>>,
-        exprs: Vec<Ast>,
+        exprs: Option<Vec<Ast>>,
+        other: Option<Vec<Option<Ast>>>,
     ) -> Ast {
         Ast {
             kind: AstKind::Control(control),
@@ -168,8 +178,9 @@ impl Ast {
             left: None,
             right: None,
             operand: None,
-            exprs: Some(exprs),
+            exprs: exprs,
             context,
+            other: other,
         }
     }
 }
@@ -352,7 +363,7 @@ fn ast_equality(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 
 // assign = equality ("=" equality)*
 // 左辺値が左辺値となりうるかの確認はコンパイル側でおこなう
-fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let assignee_ast = ast_equality(tokens, definitions);
     let mut assign_ast = assignee_ast;
     loop {
@@ -373,73 +384,20 @@ fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     }
 }
 
-// return = "return" assign
-// return は returnする対象をもつ
-fn ast_return(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    if !tokens.expect_reserved(Reserved::Return) {
-        output_unexpected_token_err(tokens);
-    }
-    // consume "return"
-    let info = tokens.consume().unwrap();
-    let return_value = ast_assign(tokens, definitions);
-    let type_ = return_value.type_.clone();
-    // 今後関数の定義されている戻り型と比較を行う
-    // 即;ならばvoid型に設定する
-    let context = vec![return_value];
-    Ast::new_control_ast(info, type_, Control::Return, None, context)
-}
-
-// if = "if" "(" assign ")" expr ("else" expr)?
-// if は contextに条件式, exprs[0]に trueのAst, exprs[1]にfalseのAstが入る
-fn ast_if(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    if !tokens.expect_reserved(Reserved::If) {
-        output_unexpected_token_err(tokens);
-    }
-
-    let mut if_ast_vec: Vec<Ast> = vec![];
-    // consume "if"
-    let if_info = tokens.consume().unwrap();
-    let if_type = definitions.get_type("void").unwrap();
-    if !tokens.expect_symbol(Symbol::LeftParenthesis) {
-        output_unexpected_token_err(tokens);
-    }
-    // consume "("
-    tokens.consume().unwrap();
-    let condition_ast = ast_assign(tokens, definitions);
-    if !tokens.expect_symbol(Symbol::RightParenthesis) {
-        output_unexpected_token_err(tokens);
-    }
-    // consume ")"
-    tokens.consume().unwrap();
-    // true時のAst
-    let true_ast = ast_expr(tokens, definitions);
-    if_ast_vec.push(true_ast);
-    if tokens.expect_reserved(Reserved::Else) {
-        // consume "else"
-        tokens.consume().unwrap();
-        let else_ast = ast_expr(tokens, definitions);
-        if_ast_vec.push(else_ast);
-    }
-    Ast::new_control_ast(
-        if_info,
-        if_type,
-        Control::If,
-        Some(Box::new(condition_ast)),
-        if_ast_vec,
-    )
-}
-
 // expr = exprs  |
 //        "return" assign
-//        "if" "(" assign ")" expr ("else" expr)?
+//        "if"  "(" assign ")" expr ("else" expr)?
+//        "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //        assign |
-fn ast_expr(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+pub fn ast_expr(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_symbol(Symbol::LeftCurlyBracket) {
         ast_exprs(tokens, definitions)
     } else if tokens.expect_reserved(Reserved::Return) {
         ast_return(tokens, definitions)
     } else if tokens.expect_reserved(Reserved::If) {
         ast_if(tokens, definitions)
+    } else if tokens.expect_reserved(Reserved::For) {
+        ast_for(tokens, definitions)
     } else {
         ast_assign(tokens, definitions)
     }
@@ -472,6 +430,7 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             match &expr.kind {
                 AstKind::Expressions => exprs.push(expr),
                 AstKind::Control(Control::If) => exprs.push(expr),
+                AstKind::Control(Control::For) => exprs.push(expr),
                 _ => output_unexpected_token_err(tokens),
             }
         }

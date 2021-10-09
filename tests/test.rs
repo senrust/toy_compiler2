@@ -125,3 +125,8 @@ fn brackets_test() {
 fn if_test() {
     do_test("if");
 }
+
+#[test]
+fn for_test() {
+    do_test("for");
+}

@@ -6,10 +6,11 @@ use crate::ast::ast::*;
 use crate::ast::error::*;
 use crate::definition::number::Number;
 use crate::definition::variables::*;
+use crate::output::controls::*;
 
-struct OutputBuffer<T: Write> {
+pub struct OutputBuffer<T: Write> {
     buf: T,
-    label_index: usize,
+    pub label_index: usize,
     stack_alignment: i32,
 }
 
@@ -26,17 +27,17 @@ impl<T: Write> OutputBuffer<T> {
         }
     }
 
-    fn increment_label(&mut self) {
+    pub fn increment_label(&mut self) {
         self.label_index += 1;
     }
 
     #[inline]
-    fn output(&mut self, line: &str) {
+    pub fn output(&mut self, line: &str) {
         writeln!(self.buf, "{}", line).unwrap();
     }
 
     #[inline]
-    fn output_push(&mut self, register: &str) {
+    pub fn output_push(&mut self, register: &str) {
         writeln!(self.buf, "    push {}", register).unwrap();
         self.stack_alignment = (self.stack_alignment + 8) / 16;
     }
@@ -49,7 +50,7 @@ impl<T: Write> OutputBuffer<T> {
     }
 
     #[inline]
-    fn output_pop(&mut self, register: &str) {
+    pub fn output_pop(&mut self, register: &str) {
         writeln!(self.buf, "    pop {}", register).unwrap();
         // 16バイトアライメントなので正の値とする
         let mut rem = self.stack_alignment - 8;
@@ -71,7 +72,7 @@ impl<T: Write> Write for OutputBuffer<T> {
     }
 }
 
-fn output_function_prelude<T: Write>(
+pub fn output_function_prelude<T: Write>(
     func_name: &str,
     local_val_size: &usize,
     buf: &mut OutputBuffer<T>,
@@ -88,7 +89,7 @@ fn output_function_prelude<T: Write>(
     }
 }
 
-fn output_function_epilogue<T: Write>(buf: &mut OutputBuffer<T>) {
+pub fn output_function_epilogue<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output("    mov rsp, rbp");
     buf.output_pop("rbp");
     buf.output("ret");
@@ -98,7 +99,7 @@ fn push_number<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     if let AstKind::ImmidiateInterger(Number::U64(num)) = ast.kind {
         buf.output_push_num(num)
     } else {
-        unexpected_ast_err(ast, "imidiate number".to_string());
+        unexpected_ast_err(ast, "imidiate number");
     }
 }
 
@@ -117,7 +118,7 @@ fn push_variable_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
         buf.output(&local_offset);
         buf.output_push("rax");
     } else {
-        unexpected_ast_err(ast, "local variable".to_string());
+        unexpected_ast_err(ast, "local variable");
     }
 }
 
@@ -170,7 +171,7 @@ fn exetute_mul<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         output_ast(ast.left.take().unwrap().as_mut(), buf);
         write_operation(buf, "imul");
     } else {
-        unexpected_ast_err(ast, "operation *".to_string());
+        unexpected_ast_err(ast, "operation *");
     }
 }
 
@@ -183,7 +184,7 @@ fn exetute_div<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         buf.output("    idiv rdi");
         buf.output_push("rax");
     } else {
-        unexpected_ast_err(ast, "operation /".to_string());
+        unexpected_ast_err(ast, "operation /");
     }
 }
 
@@ -194,7 +195,7 @@ fn exetute_add<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     } else if let AstKind::Operation(Operation::Sub) = ast.kind {
         operation = "sub";
     } else {
-        unexpected_ast_err(ast, "operation + or -".to_string());
+        unexpected_ast_err(ast, "operation + or -");
     }
 
     output_ast(ast.right.take().unwrap().as_mut(), buf);
@@ -209,7 +210,7 @@ fn exetute_eq<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     } else if let AstKind::Operation(Operation::NotEq) = ast.kind {
         euality = "setne";
     } else {
-        unexpected_ast_err(ast, "operation == or !=".to_string());
+        unexpected_ast_err(ast, "operation == or !=");
     }
     output_ast(ast.right.take().unwrap().as_mut(), buf);
     output_ast(ast.left.take().unwrap().as_mut(), buf);
@@ -233,7 +234,7 @@ fn exetute_comp<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     } else if let AstKind::Operation(Operation::Le) = ast.kind {
         comparison = "setle";
     } else {
-        unexpected_ast_err(ast, "operation >, <, >= or <=".to_string());
+        unexpected_ast_err(ast, "operation >, <, >= or <=");
     }
     output_ast(ast.right.take().unwrap().as_mut(), buf);
     output_ast(ast.left.take().unwrap().as_mut(), buf);
@@ -243,7 +244,7 @@ fn exetute_comp<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 fn exetute_not<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match ast.kind {
         AstKind::Operation(Operation::Not) => (),
-        _ => unexpected_ast_err(ast, "operation !".to_string()),
+        _ => unexpected_ast_err(ast, "operation !"),
     }
 
     output_ast(ast.operand.take().unwrap().as_mut(), buf);
@@ -253,9 +254,9 @@ fn exetute_not<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match ast.kind {
         AstKind::Operation(Operation::Assign) => (),
-        _ => unexpected_ast_err(ast, "operation =".to_string()),
+        _ => unexpected_ast_err(ast, "operation ="),
     }
-    // 左辺値が被代入可能化確認
+    // 左辺値が被代入可能か確認
     let left_ast = ast.left.take().unwrap();
     if let AstKind::Variable(_val) = &left_ast.kind {
         // 代入は右から評価する
@@ -271,7 +272,7 @@ fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match ast.kind {
         AstKind::Expressions => (),
-        _ => unexpected_ast_err(ast, "{} block".to_string()),
+        _ => unexpected_ast_err(ast, "{} block"),
     }
     let expr_ast_vec = ast.exprs.take().unwrap();
     for mut expr_ast in expr_ast_vec {
@@ -280,52 +281,24 @@ fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     }
 }
 
-// return文のコンパイル
-// returnする値のastはexprs[0]
-fn execute_return<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Control(Control::Return) => (),
-        _ => unexpected_ast_err(ast, "return".to_string()),
+// if文 for文に対して if(a) a = 0; と if (a) {a = 0}では,
+// 前者の場合にはa=0の結果(0)がスタックに積まれたままなので, 取り出す必要がある.
+// 後者の場合はスタックから取り出されている
+pub fn output_expr_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    match &ast.kind {
+        AstKind::Operation(_) => {
+            output_operation_ast(ast, buf);
+            buf.output_pop("rax");
+        }
+        AstKind::Control(Control::Return) => execute_return(ast, buf),
+        AstKind::Control(Control::If) => execute_if(ast, buf),
+        AstKind::Control(Control::For) => execute_for(ast, buf),
+        AstKind::Expressions => excute_exprs(ast, buf),
+        _ => unsupported_ast_err(ast),
     }
-    let mut expr = ast.exprs.take().unwrap();
-    let return_value = expr.first_mut().unwrap();
-    output_ast(return_value, buf);
-    buf.output_pop("rax");
-    output_function_epilogue(buf);
 }
 
-// if文のコンパイル
-// if文の条件はcontext, true時の条件はexprs[0], elseがある場合はelse時の条件はexprs[1]にある
-fn execute_if<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Control(Control::If) => (),
-        _ => unexpected_ast_err(ast, "if".to_string()),
-    }
-
-    // 条件式のコンパイル
-    let mut condition = ast.context.take().unwrap();
-    let mut if_context = ast.exprs.take().unwrap();
-    let has_else = if_context.len() == 2;
-    output_ast(&mut condition, buf);
-    buf.output_pop("rax");
-    buf.output("cmp rax, 0");
-    if has_else {
-        buf.output(&format!("    je .Labelelse{}", buf.label_index));
-    } else {
-        buf.output(&format!("    je .Labelend{}", buf.label_index));
-    }
-    output_ast(&mut if_context[0], buf);
-    // else文がある場合
-    if has_else {
-        buf.output(&format!(".Labelelse{}:", buf.label_index));
-        output_ast(&mut if_context[1], buf);
-    } else {
-        buf.output(&format!(".Labelend{}:", buf.label_index));
-    }
-    buf.increment_label();
-}
-
-fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+pub fn output_operation_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
         AstKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
@@ -336,8 +309,23 @@ fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         }
         AstKind::Operation(Operation::Not) => exetute_not(ast, buf),
         AstKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
+        _ => unsupported_ast_err(ast),
+    }
+}
+
+pub fn output_control_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    match &ast.kind {
         AstKind::Control(Control::Return) => execute_return(ast, buf),
         AstKind::Control(Control::If) => execute_if(ast, buf),
+        AstKind::Control(Control::For) => execute_for(ast, buf),
+        _ => unsupported_ast_err(ast),
+    }
+}
+
+pub fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    match &ast.kind {
+        AstKind::Operation(_) => output_operation_ast(ast, buf),
+        AstKind::Control(_) => output_control_ast(ast, buf),
         AstKind::ImmidiateInterger(_num) => push_number(ast, buf),
         AstKind::Variable(_val) => push_variable_value(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
