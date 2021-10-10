@@ -1,6 +1,8 @@
 main(){
+    long a;
+    long b;
+    long c;
     a = 10;
-    c;
     {
         b = 3 + 2;
         c = a * b / 5;

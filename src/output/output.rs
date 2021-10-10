@@ -309,13 +309,17 @@ fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let expr_ast_vec = ast.exprs.take().unwrap();
     for mut expr_ast in expr_ast_vec {
         output_ast(&mut expr_ast, buf);
-        buf.output_pop("rax");
+        // 複文側の最後, 各制御文側でpopしているのでこちらではpopしない
+        // if文やfor文の{}後も複文の制御構文側でpopしているのでこちらでは行わない
+        if !matches!(
+            expr_ast.kind,
+            AstKind::Expressions | AstKind::Control(Control::For | Control::If | Control::While)
+        ) {
+            buf.output_pop("rax");
+        }
     }
 }
 
-// if文 for文に対して if(a) a = 0; と if (a) {a = 0}では,
-// 前者の場合にはa=0の結果(0)がスタックに積まれたままなので, 取り出す必要がある.
-// 後者の場合はスタックから取り出されている
 pub fn output_expr_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(_) => {

@@ -1,7 +1,7 @@
 main() {
-    b = 0;
-    for (a = 0; a == 10; a = a + 1){
-        b = b + 1;
+    long a;
+    for (a = 0; a == 10; a = a + 1) {
+        1 + 1;
     }
-    return b;
+    return a;
 }

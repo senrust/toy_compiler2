@@ -2,14 +2,14 @@ use crate::definition::{functions::*, number::*, types::*, variables::*};
 
 pub struct Definitions {
     type_: TypesDefinitions,
-    variable: VariableDeclearations,
+    variable: VariableDeclarations,
     function: FunctionDefinitions,
 }
 
 impl Definitions {
     pub fn new() -> Self {
         let type_ = TypesDefinitions::new();
-        let variable = VariableDeclearations::new();
+        let variable = VariableDeclarations::new();
         let function = FunctionDefinitions::new();
         Definitions {
             type_,
@@ -18,8 +18,12 @@ impl Definitions {
         }
     }
 
-    pub fn get_primitive_type(&self, num: &Number) -> Type {
-        self.type_.get_primitive_type(num)
+    pub fn get_number_type(&self, num: &Number) -> Type {
+        self.type_.get_number_type(num)
+    }
+
+    pub fn get_primitive_type(&self, primitive: &PrimitiveType) -> Type {
+        self.type_.get_primitive_type(primitive)
     }
 
     pub fn get_type(&self, name: &str) -> Option<Type> {
@@ -34,8 +38,8 @@ impl Definitions {
         self.function.get_function(name)
     }
 
-    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Type, ()> {
-        if let Ok(_definedfunc) = self.function.declear_function(name, function.clone()) {
+    pub fn declar_function(&mut self, name: &str, function: Function) -> Result<Type, ()> {
+        if let Ok(_definedfunc) = self.function.declar_function(name, function.clone()) {
             if let Some(func_type) = self.type_.get_type(name) {
                 Ok(func_type)
             } else {
@@ -47,12 +51,12 @@ impl Definitions {
         }
     }
 
-    pub fn declear_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
-        self.variable.declear_global_val(name, type_)
+    pub fn declar_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
+        self.variable.declar_global_val(name, type_)
     }
 
-    pub fn declear_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
-        self.variable.declear_local_val(name, type_)
+    pub fn declar_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
+        self.variable.declar_local_val(name, type_)
     }
 
     pub fn get_variable(&self, name: &str) -> Option<Variable> {

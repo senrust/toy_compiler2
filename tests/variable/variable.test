@@ -1,3 +1,6 @@
 main(){
+    long a;
+    long b;
+    long c;
     return a + 10 - b + c - a;
 }

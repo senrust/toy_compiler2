@@ -1,6 +1,7 @@
 use crate::definition::number::{string_to_number, Number};
-use crate::definition::reservedwords::{check_reserved_word, Reserved};
+use crate::definition::reservedwords::*;
 use crate::definition::symbols::{get_token_symbol, Symbol};
+use crate::definition::types::{PrimitiveType, PrimitiveTypeError};
 use crate::token::parser::{RawToken, RawTokenKind};
 use std::fmt;
 
@@ -108,6 +109,20 @@ impl Token {
             _ => false,
         }
     }
+
+    pub fn expect_primitivetype(&self) -> bool {
+        match &self.kind {
+            TokenKind::Reserved(reserved) => check_primitivetype_reserved_word(reserved),
+            _ => false,
+        }
+    }
+
+    pub fn get_primitivetypename(&self) -> Result<PrimitiveType, PrimitiveTypeError> {
+        match &self.kind {
+            TokenKind::Reserved(reserved) => get_primitivetype_reserved_word(reserved),
+            _ => Err(PrimitiveTypeError::NotPrimitiveTypeErr),
+        }
+    }
 }
 
 pub enum TokenError {
@@ -115,6 +130,8 @@ pub enum TokenError {
     InvalidNumberErr(String),
     UnClosedError,
     UnClosedEndError,
+    UnDeclaredVariableError,
+    AlreadyDeclaredVariableError,
 }
 
 impl fmt::Display for TokenError {
@@ -131,6 +148,12 @@ impl fmt::Display for TokenError {
             }
             TokenError::UnClosedEndError => {
                 write!(f, "unclosed end")
+            }
+            TokenError::UnDeclaredVariableError => {
+                write!(f, "undeclared variable")
+            }
+            TokenError::AlreadyDeclaredVariableError => {
+                write!(f, "already declared variable")
             }
         }
     }
@@ -183,7 +206,7 @@ impl Tokens {
         }
     }
 
-    pub fn expect_symbol(&mut self, symbol: Symbol) -> bool {
+    pub fn expect_symbol(&self, symbol: Symbol) -> bool {
         if let Some(token) = self.vec.get(self.cur) {
             if token.expect_symbol(&symbol) {
                 return true;
@@ -192,7 +215,7 @@ impl Tokens {
         false
     }
 
-    pub fn expect_symbols(&mut self, symbols: &[Symbol]) -> bool {
+    pub fn expect_symbols(&self, symbols: &[Symbol]) -> bool {
         for symbol in symbols {
             if let Some(token) = self.vec.get(self.cur) {
                 if token.expect_symbol(symbol) {
@@ -250,6 +273,51 @@ impl Tokens {
             token.expect_reserved(reserved)
         } else {
             false
+        }
+    }
+
+    pub fn expect_primitivetype(&self) -> bool {
+        if let Some(token) = self.vec.get(self.cur) {
+            if token.expect_primitivetype() {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn consume_primitivetype(&mut self) -> Result<PrimitiveType, ()> {
+        if let Some(token) = self.vec.get(self.cur) {
+            let primitive_type = token.get_primitivetypename();
+            match primitive_type {
+                Ok(type_) => {
+                    self.cur += 1;
+                    Ok(type_)
+                }
+                Err(PrimitiveTypeError::UnsignedError) => {
+                    self.cur += 1;
+                    if let Some(token) = self.vec.get(self.cur) {
+                        if let Ok(primitive_type) = token.get_primitivetypename() {
+                            self.cur += 1;
+                            let type_ = match primitive_type {
+                                PrimitiveType::I8 => PrimitiveType::U8,
+                                PrimitiveType::I16 => PrimitiveType::U16,
+                                PrimitiveType::I32 => PrimitiveType::U32,
+                                PrimitiveType::I64 => PrimitiveType::U64,
+                                _ => return Err(()),
+                            };
+                            self.cur += 1;
+                            Ok(type_)
+                        } else {
+                            Err(())
+                        }
+                    } else {
+                        Err(())
+                    }
+                }
+                Err(PrimitiveTypeError::NotPrimitiveTypeErr) => Err(()),
+            }
+        } else {
+            Err(())
         }
     }
 }

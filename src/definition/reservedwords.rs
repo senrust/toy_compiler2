@@ -1,3 +1,5 @@
+use super::types::{PrimitiveType, PrimitiveTypeError};
+
 macro_rules! reserved_words_array {
     () => {
         [
@@ -90,4 +92,27 @@ pub fn check_reserved_word(indentifiler: &str) -> Option<Reserved> {
         }
     }
     None
+}
+
+pub fn check_primitivetype_reserved_word(reserved: &Reserved) -> bool {
+    matches!(
+        reserved,
+        Reserved::Long | Reserved::Int | Reserved::Short | Reserved::Char | Reserved::Void
+    )
+}
+
+pub fn get_primitivetype_reserved_word(
+    reserved: &Reserved,
+) -> Result<PrimitiveType, PrimitiveTypeError> {
+    match reserved {
+        Reserved::Void => Ok(PrimitiveType::Void),
+        Reserved::Char => Ok(PrimitiveType::I8),
+        Reserved::Short => Ok(PrimitiveType::I16),
+        Reserved::Int => Ok(PrimitiveType::I32),
+        Reserved::Long => Ok(PrimitiveType::I64),
+        Reserved::Double => Ok(PrimitiveType::F32),
+        Reserved::Float => Ok(PrimitiveType::F64),
+        Reserved::Unsigned => Err(PrimitiveTypeError::UnsignedError),
+        _ => Err(PrimitiveTypeError::NotPrimitiveTypeErr),
+    }
 }

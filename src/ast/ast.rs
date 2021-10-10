@@ -1,4 +1,5 @@
 use crate::ast::controls::*;
+use crate::ast::declaration::*;
 use crate::definition::definitions::Definitions;
 use crate::definition::functions::Function;
 use crate::definition::number::Number;
@@ -180,9 +181,9 @@ impl Ast {
             left: None,
             right: None,
             operand: None,
-            exprs: exprs,
+            exprs,
             context,
-            other: other,
+            other,
         }
     }
 }
@@ -193,7 +194,7 @@ fn ast_number(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     }
 
     if let Ok((num, info)) = tokens.consume_integer() {
-        let type_ = definitions.get_primitive_type(&num);
+        let type_ = definitions.get_number_type(&num);
         match num {
             Number::U64(num_u64) => Ast::new_integer_ast(Number::U64(num_u64), info, type_),
             Number::F64(_num_f64) => unreachable!(),
@@ -213,9 +214,7 @@ fn ast_variable(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         if let Some(defined_val) = definitions.get_variable(&ident) {
             val = defined_val;
         } else {
-            // とりあえず8バイトのlong型とする
-            let type_ = definitions.get_type("long").unwrap();
-            val = definitions.declear_local_val(&ident, type_).unwrap();
+            output_undeclared_variable_err(&info);
         }
         let val_type = val.get_type();
         Ast::new_variable_ast(val, info, val_type)
@@ -411,7 +410,7 @@ pub fn ast_expr(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     }
 }
 
-// exprs = "{" (expr ";") *  + (expr)? "}"
+// exprs = "{" (( expr   | type valname ) ";")* "}"
 fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let mut exprs: Vec<Ast> = vec![];
 
@@ -428,6 +427,13 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         if tokens.is_empty() {
             output_unclosed_token_err(tokens);
         }
+
+        //ローカル変数宣言
+        if tokens.expect_primitivetype() {
+            local_val_declaration(tokens, definitions);
+            continue;
+        }
+
         let expr = ast_expr(tokens, definitions);
         if tokens.expect_symbol(Symbol::SemiColon) {
             // consume ";"
@@ -478,7 +484,7 @@ fn ast_funcution_implementaion(tokens: &mut Tokens, definitions: &mut Definition
     let (func_name, info) = tokens.consume_identifier().unwrap();
     let func_args = get_func_args(tokens, definitions);
     let func = Function::new(func_args, None);
-    let func_type = definitions.declear_function(&func_name, func).unwrap();
+    let func_type = definitions.declar_function(&func_name, func).unwrap();
     // 関数実装ASTを作成
     definitions.initialize_local_scope();
     let expfunc_context_ast = ast_exprs(tokens, definitions);

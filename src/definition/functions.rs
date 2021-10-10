@@ -55,7 +55,7 @@ impl FunctionDefinitions {
         self.dict.get(name).cloned()
     }
 
-    pub fn declear_function(&mut self, name: &str, function: Function) -> Result<Function, ()> {
+    pub fn declar_function(&mut self, name: &str, function: Function) -> Result<Function, ()> {
         // 同じ関数の複数回宣言は許可する
         if let Some(exist_function) = self.dict.get(name) {
             if *exist_function == function {

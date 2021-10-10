@@ -18,6 +18,11 @@ pub enum PrimitiveType {
     F64,
 }
 
+pub enum PrimitiveTypeError {
+    UnsignedError,
+    NotPrimitiveTypeErr,
+}
+
 #[derive(Debug, Clone)]
 // 型定義
 // 配列型でインデックスアクセスを行わない場合はポインタ型に変換されるようにする
@@ -206,10 +211,18 @@ impl TypesDefinitions {
         self.dict.insert(type_name.to_string(), type_);
     }
 
-    pub fn get_primitive_type(&self, num_type: &Number) -> Type {
+    pub fn get_number_type(&self, num_type: &Number) -> Type {
         match num_type {
             Number::U64(_) => self.dict["long"].clone(),
             Number::F64(_) => self.dict["double"].clone(),
+        }
+    }
+
+    pub fn get_primitive_type(&self, primitive_type: &PrimitiveType) -> Type {
+        match primitive_type {
+            PrimitiveType::Void => self.dict["void"].clone(),
+            PrimitiveType::I64 => self.dict["long"].clone(),
+            _ => unreachable!(),
         }
     }
 

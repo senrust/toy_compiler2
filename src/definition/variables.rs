@@ -41,7 +41,7 @@ struct LocalScope {
 /// - hidden_local - より深いスコープで同名のローカル変数が宣言された場合に,
 /// 宣言済みのローカル変数を退避させるためのテーブル  
 /// キーが変数名, 値が退避ローカル変数ベクトル(ベクトル後方ほど深いスコープで宣言された退避ローカル変数)
-pub struct VariableDeclearations {
+pub struct VariableDeclarations {
     global_vals: HashMap<String, Rc<GlobalVariable>>,
     local_vals: HashMap<String, Rc<LocalVariable>>,
     local_scopes: Option<Vec<LocalScope>>,
@@ -51,9 +51,9 @@ pub struct VariableDeclearations {
     hidden_local: HashMap<String, Vec<Rc<LocalVariable>>>,
 }
 
-impl VariableDeclearations {
+impl VariableDeclarations {
     pub fn new() -> Self {
-        VariableDeclearations {
+        VariableDeclarations {
             global_vals: HashMap::new(),
             local_vals: HashMap::new(),
             local_scopes: None,
@@ -69,7 +69,7 @@ impl VariableDeclearations {
     }
 
     // グローバル変数を宣言
-    pub fn declear_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
+    pub fn declar_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
         if self.global_vals.get(name).is_some() {
             return Err(());
         }
@@ -84,7 +84,7 @@ impl VariableDeclearations {
     }
 
     // ローカル変数を現在のスコープで宣言
-    pub fn declear_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
+    pub fn declar_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
         if self.local_scope_depth.is_none() {
             return Err(());
         }
