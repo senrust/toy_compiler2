@@ -139,10 +139,10 @@ fn push_number<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 }
 
 fn push_variable_value<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
-    push_variable_address(ast, buf);
-    buf.output_pop("rax");
-    buf.output("    mov rax, [rax]");
-    buf.output_push("rax");
+    if let AstKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
+        let offset = local_val.frame_offset;
+        buf.output(&format!("    push [rbp - {}]", offset));
+    }
 }
 
 fn push_variable_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
