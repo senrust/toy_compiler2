@@ -189,37 +189,21 @@ impl Ast {
 }
 
 fn ast_number(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    if !tokens.expect_number() {
-        output_unexpected_token_err(tokens);
-    }
-
-    if let Ok((num, info)) = tokens.consume_integer() {
-        let type_ = definitions.get_number_type(&num);
-        match num {
-            Number::U64(num_u64) => Ast::new_integer_ast(Number::U64(num_u64), info, type_),
-            Number::F64(_num_f64) => unreachable!(),
-        }
-    } else {
-        invalid_number_token_err(&tokens.get().unwrap().info);
+    let (num, info) = tokens.consume_integer();
+    let type_ = definitions.get_number_type(&num);
+    match num {
+        Number::U64(num_u64) => Ast::new_integer_ast(Number::U64(num_u64), info, type_),
+        Number::F64(_num_f64) => unreachable!(),
     }
 }
 
 fn ast_variable(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    if !tokens.expect_identifier() {
-        output_unexpected_token_err(tokens);
-    }
-
-    if let Ok((ident, info)) = tokens.consume_identifier() {
-        let val;
-        if let Some(defined_val) = definitions.get_variable(&ident) {
-            val = defined_val;
-        } else {
-            output_undeclared_variable_err(&info);
-        }
+    let (ident, info) = tokens.consume_identifier();
+    if let Some(val) = definitions.get_variable(&ident) {
         let val_type = val.get_type();
         Ast::new_variable_ast(val, info, val_type)
     } else {
-        output_unexpected_token_err(tokens);
+        output_undeclared_variable_err(&info);
     }
 }
 
@@ -231,11 +215,11 @@ fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         ast_variable(tokens, definitions)
     } else if tokens.expect_symbol(Symbol::LeftParenthesis) {
         // drop "(" token
-        tokens.consume().unwrap();
+        tokens.consume_symbol(Symbol::LeftParenthesis);
         let add_ast = ast_equality(tokens, definitions);
         if tokens.expect_symbol(Symbol::RightParenthesis) {
             // drop ")" token
-            tokens.consume().unwrap();
+            tokens.consume_symbol(Symbol::RightParenthesis);
             add_ast
         } else {
             output_unclosed_token_err(tokens);
@@ -249,18 +233,18 @@ fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 fn ast_unary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_symbol(Symbol::Add) {
         // drop "+" token
-        tokens.consume().unwrap();
+        tokens.consume_symbol(Symbol::Add);
         ast_primary(tokens, definitions)
     } else if tokens.expect_symbol(Symbol::Sub) {
         // drop "-" token
-        let sub_info = tokens.consume().unwrap();
+        let sub_info = tokens.consume_symbol(Symbol::Sub);
         let primary_ast = ast_primary(tokens, definitions);
         let type_ = primary_ast.type_.clone();
         let zero_ast = Ast::new_integer_ast(Number::U64(0), sub_info.clone(), type_.clone());
         Ast::new_binary_operation_ast(Operation::Sub, sub_info, type_, zero_ast, primary_ast)
     } else if tokens.expect_symbol(Symbol::Not) {
         // drop "!" token
-        let not_info = tokens.consume().unwrap();
+        let not_info = tokens.consume_symbol(Symbol::Not);
         let operand_ast = ast_unary(tokens, definitions);
         // とりあえず8バイトにしておく
         let type_ = definitions.get_type("long").unwrap();
@@ -284,9 +268,9 @@ fn ast_mul(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             return mul_ast;
         }
 
-        let ast_info = tokens.consume().unwrap();
+        let ast_info = tokens.consume();
         let right_ast = ast_unary(tokens, definitions);
-        let type_ = evaluate_binary_operation_type(&mul_ast, &right_ast).unwrap();
+        let type_ = evaluate_binary_operation_type(&mul_ast, &right_ast);
         mul_ast = Ast::new_binary_operation_ast(operation, ast_info, type_, mul_ast, right_ast);
     }
 }
@@ -305,9 +289,9 @@ fn ast_add(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             return add_ast;
         }
 
-        let ast_info = tokens.consume().unwrap();
+        let ast_info = tokens.consume();
         let right_ast = ast_mul(tokens, definitions);
-        let type_ = evaluate_binary_operation_type(&add_ast, &right_ast).unwrap();
+        let type_ = evaluate_binary_operation_type(&add_ast, &right_ast);
         add_ast = Ast::new_binary_operation_ast(operation, ast_info, type_, add_ast, right_ast);
     }
 }
@@ -330,7 +314,7 @@ fn ast_relational(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             return relational_ast;
         }
 
-        let ast_info = tokens.consume().unwrap();
+        let ast_info = tokens.consume();
         let right_ast = ast_add(tokens, definitions);
         // とりあえず比較の型は8バイトにしておく
         let type_ = definitions.get_type("long").unwrap();
@@ -353,7 +337,7 @@ fn ast_equality(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             return equality_ast;
         }
 
-        let ast_info = tokens.consume().unwrap();
+        let ast_info = tokens.consume();
         let right_ast = ast_add(tokens, definitions);
         // とりあえず比較の型は8バイトにしておく
         let type_ = definitions.get_type("long").unwrap();
@@ -371,7 +355,7 @@ pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         if !tokens.expect_symbol(Symbol::Assign) {
             return assign_ast;
         }
-        let ast_info = tokens.consume().unwrap();
+        let ast_info = tokens.consume_symbol(Symbol::Assign);
         let ast_assigner = ast_assign(tokens, definitions);
         // とりあえず代入の型は8バイトにしておく
         let type_ = definitions.get_type("long").unwrap();
@@ -413,13 +397,8 @@ pub fn ast_expr(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 // exprs = "{" (( expr   | type valname ) ";")* "}"
 fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let mut exprs: Vec<Ast> = vec![];
-
-    if !tokens.expect_symbol(Symbol::LeftCurlyBracket) {
-        output_unexpected_token_err(tokens);
-    }
-
-    // consume "{"
-    tokens.consume().unwrap();
+    // comsume "{"
+    tokens.consume_symbol(Symbol::LeftCurlyBracket);
     // ローカル変数のネストを深くする
     definitions.enter_new_local_scope();
 
@@ -429,7 +408,7 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         }
 
         //ローカル変数宣言
-        if tokens.expect_primitivetype() {
+        if is_type_token(tokens, definitions) {
             local_val_declaration(tokens, definitions);
             continue;
         }
@@ -437,7 +416,7 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         let expr = ast_expr(tokens, definitions);
         if tokens.expect_symbol(Symbol::SemiColon) {
             // consume ";"
-            tokens.consume().unwrap();
+            tokens.consume_symbol(Symbol::SemiColon);
             exprs.push(expr);
         } else {
             // 複文, if, for, while文はセミコロン不要
@@ -454,7 +433,7 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     definitions.exit_current_local_scope();
 
     // "}" の位置を複文の情報とする
-    let exprs_info = tokens.consume().unwrap();
+    let exprs_info = tokens.consume_symbol(Symbol::RightCurlyBracket);
     let exprs_type; // 複文が返す型情報
     exprs_type = definitions.get_type("void").unwrap();
     Ast::new_expressions_ast(exprs_info, exprs_type, exprs, None)
@@ -462,26 +441,16 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 
 // 関数の引数を取得します
 fn get_func_args(tokens: &mut Tokens, _definitions: &mut Definitions) -> Option<Vec<Type>> {
-    if !tokens.expect_symbol(Symbol::LeftParenthesis) {
-        output_unexpected_token_err(tokens);
-    }
-    // drop "("
-    tokens.consume().unwrap();
-
-    if !tokens.expect_symbol(Symbol::RightParenthesis) {
-        output_unexpected_token_err(tokens);
-    }
-    // drop ")"
-    tokens.consume().unwrap();
+    // consume "("
+    tokens.consume_symbol(Symbol::LeftParenthesis);
+    // consume ")"
+    tokens.consume_symbol(Symbol::RightParenthesis);
     None
 }
 
 fn ast_funcution_implementaion(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    if !tokens.expect_identifier() {
-        output_unexpected_token_err(tokens);
-    }
     // 関数定義
-    let (func_name, info) = tokens.consume_identifier().unwrap();
+    let (func_name, info) = tokens.consume_identifier();
     let func_args = get_func_args(tokens, definitions);
     let func = Function::new(func_args, None);
     let func_type = definitions.declar_function(&func_name, func).unwrap();
@@ -501,9 +470,9 @@ fn ast_funcution_implementaion(tokens: &mut Tokens, definitions: &mut Definition
 
 pub fn make_asts(mut tokens: Tokens) -> Vec<Ast> {
     let mut asts: Vec<Ast> = vec![];
-    let mut programinfo = Definitions::new();
+    let mut definitions = Definitions::new();
     while tokens.has_token() {
-        let ast = ast_funcution_implementaion(&mut tokens, &mut programinfo);
+        let ast = ast_funcution_implementaion(&mut tokens, &mut definitions);
         asts.push(ast);
     }
     asts

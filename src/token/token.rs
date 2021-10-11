@@ -2,6 +2,7 @@ use crate::definition::number::{string_to_number, Number};
 use crate::definition::reservedwords::*;
 use crate::definition::symbols::{get_token_symbol, Symbol};
 use crate::definition::types::{PrimitiveType, PrimitiveTypeError};
+use crate::token::error::*;
 use crate::token::parser::{RawToken, RawTokenKind};
 use std::fmt;
 
@@ -132,6 +133,7 @@ pub enum TokenError {
     UnClosedEndError,
     UnDeclaredVariableError,
     AlreadyDeclaredVariableError,
+    NotEnoughTokenError,
 }
 
 impl fmt::Display for TokenError {
@@ -154,6 +156,9 @@ impl fmt::Display for TokenError {
             }
             TokenError::AlreadyDeclaredVariableError => {
                 write!(f, "already declared variable")
+            }
+            TokenError::NotEnoughTokenError => {
+                write!(f, "identifiler is nesesarry after this token")
             }
         }
     }
@@ -185,6 +190,10 @@ impl Tokens {
         self.vec.get(self.cur)
     }
 
+    pub fn get_prev(&self) -> Option<&Token> {
+        self.vec.get(self.cur - 1)
+    }
+
     pub fn get_tail(&self) -> Option<&Token> {
         self.vec.last()
     }
@@ -197,12 +206,12 @@ impl Tokens {
         self.cur < self.vec.len()
     }
 
-    pub fn consume(&mut self) -> Result<TokenInfo, ()> {
+    pub fn consume(&mut self) -> TokenInfo {
         if let Some(token) = self.vec.get(self.cur) {
             self.cur += 1;
-            Ok(token.info.clone())
+            token.info.clone()
         } else {
-            Err(())
+            output_unexpected_token_err(self)
         }
     }
 
@@ -226,6 +235,19 @@ impl Tokens {
         false
     }
 
+    pub fn consume_symbol(&mut self, symbol: Symbol) -> TokenInfo {
+        if let Some(token) = self.vec.get(self.cur) {
+            if token.expect_symbol(&symbol) {
+                self.cur += 1;
+                token.info.clone()
+            } else {
+                output_unexpected_token_err(self)
+            }
+        } else {
+            output_unexpected_token_err(self)
+        }
+    }
+
     pub fn expect_number(&self) -> bool {
         if let Some(token) = self.vec.get(self.cur) {
             token.expect_number()
@@ -234,16 +256,16 @@ impl Tokens {
         }
     }
 
-    pub fn consume_integer(&mut self) -> Result<(Number, TokenInfo), ()> {
+    pub fn consume_integer(&mut self) -> (Number, TokenInfo) {
         if let Some(token) = self.vec.get(self.cur) {
             if let Ok(num) = token.get_interger() {
                 self.cur += 1;
-                Ok((num, token.info.clone()))
+                (num, token.info.clone())
             } else {
-                Err(())
+                invalid_number_token_err(&token.info);
             }
         } else {
-            Err(())
+            output_unexpected_token_err(self)
         }
     }
 
@@ -255,16 +277,16 @@ impl Tokens {
         }
     }
 
-    pub fn consume_identifier(&mut self) -> Result<(String, TokenInfo), ()> {
+    pub fn consume_identifier(&mut self) -> (String, TokenInfo) {
         if let Some(token) = self.vec.get(self.cur) {
             if let Ok(ident) = token.get_identifier() {
                 self.cur += 1;
-                Ok((ident.clone(), token.info.clone()))
+                (ident.clone(), token.info.clone())
             } else {
-                Err(())
+                output_unexpected_token_err(self)
             }
         } else {
-            Err(())
+            output_unexpected_token_err(self)
         }
     }
 
@@ -273,6 +295,19 @@ impl Tokens {
             token.expect_reserved(reserved)
         } else {
             false
+        }
+    }
+
+    pub fn consume_reserved(&mut self, reserved: Reserved) -> TokenInfo {
+        if let Some(token) = self.vec.get(self.cur) {
+            if token.expect_reserved(reserved) {
+                self.cur += 1;
+                token.info.clone()
+            } else {
+                output_unexpected_token_err(self)
+            }
+        } else {
+            output_unexpected_token_err(self)
         }
     }
 
@@ -285,7 +320,7 @@ impl Tokens {
         false
     }
 
-    pub fn consume_primitivetype(&mut self) -> Result<PrimitiveType, ()> {
+    pub fn get_primitivetype(&mut self) -> Result<PrimitiveType, ()> {
         if let Some(token) = self.vec.get(self.cur) {
             let primitive_type = token.get_primitivetypename();
             match primitive_type {

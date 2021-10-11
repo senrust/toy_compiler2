@@ -240,6 +240,6 @@ impl TypesDefinitions {
     }
 }
 
-pub fn evaluate_binary_operation_type(left: &Ast, _right: &Ast) -> Result<Type, ()> {
-    Ok(left.type_.clone())
+pub fn evaluate_binary_operation_type(left: &Ast, _right: &Ast) -> Type {
+    left.type_.clone()
 }

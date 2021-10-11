@@ -60,6 +60,11 @@ pub fn unexpected_token_err(info: &TokenInfo) -> ! {
     exit(-1);
 }
 
+pub fn notenough_token_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::NotEnoughTokenError, info);
+    exit(-1);
+}
+
 fn unclosed_token_err(info: &TokenInfo) -> ! {
     print_token_error_info(TokenError::UnClosedError, info);
     exit(-1);
@@ -92,9 +97,12 @@ pub fn output_unclosed_token_err(tokens: &Tokens) -> ! {
 }
 
 pub fn output_unexpected_token_err(tokens: &Tokens) -> ! {
-    // tokensが何もないときはtokens作成時にerrorとするのでunwrap可能
-    let err_token = tokens.get().unwrap();
-    unexpected_token_err(&err_token.info);
+    if let Some(err_token) = tokens.get() {
+        unexpected_token_err(&err_token.info);
+    } else {
+        let prev_token = tokens.get_prev().unwrap();
+        notenough_token_err(&prev_token.info);
+    }
 }
 
 pub fn output_undeclared_variable_err(info: &TokenInfo) -> ! {
