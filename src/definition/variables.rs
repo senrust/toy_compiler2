@@ -53,7 +53,7 @@ pub struct VariableDeclarations {
 
 impl VariableDeclarations {
     pub fn new() -> Self {
-        VariableDeclarations {
+        let mut val_declarations = VariableDeclarations {
             global_vals: HashMap::new(),
             local_vals: HashMap::new(),
             local_scopes: vec![],
@@ -61,7 +61,13 @@ impl VariableDeclarations {
             max_frame_offset: 8,     // rbp分加わる
             local_scope_depth: 0,
             hidden_local: HashMap::new(),
-        }
+        };
+        let args_scope = LocalScope {
+            frame_offset: val_declarations.current_frame_offset,
+            scope_val_names: vec![],
+        };
+        val_declarations.local_scopes.push(args_scope);
+        val_declarations
     }
 
     pub fn get_local_val_frame_size(&self) -> usize {
@@ -69,7 +75,7 @@ impl VariableDeclarations {
     }
 
     // グローバル変数を宣言
-    pub fn declar_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
+    pub fn declare_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
         if self.global_vals.get(name).is_some() {
             return Err(());
         }
@@ -84,7 +90,7 @@ impl VariableDeclarations {
     }
 
     // ローカル変数を現在のスコープで宣言
-    pub fn declar_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
+    pub fn declare_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
         // すでに同じローカル変数名が登録されている場合はそのローカル変数をhidden_localに対比させる
         if let Some(same_name_val) = self.local_vals.remove(name) {
             // 現在のスコープですでに宣言されている場合はエラー
@@ -184,5 +190,11 @@ impl VariableDeclarations {
         self.max_frame_offset = 8;
         self.local_scope_depth = 0;
         self.hidden_local.clear();
+
+        let args_scope = LocalScope {
+            frame_offset: self.current_frame_offset,
+            scope_val_names: vec![],
+        };
+        self.local_scopes.push(args_scope);
     }
 }

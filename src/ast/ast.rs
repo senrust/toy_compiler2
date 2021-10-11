@@ -38,7 +38,7 @@ pub enum Control {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstKind {
     FunctionImplementation((String, usize)),
-    FuncionCall(String),
+    FuncionCall(String, Type),
     Expressions,
     Operation(Operation),
     Control(Control),
@@ -132,6 +132,7 @@ impl Ast {
         info: TokenInfo,
         type_: Type,
         frame_size: usize,
+        args_expr: Option<Vec<Ast>>,
         context: Ast,
     ) -> Ast {
         Ast {
@@ -141,7 +142,7 @@ impl Ast {
             left: None,
             right: None,
             operand: None,
-            exprs: None,
+            exprs: args_expr,
             context: Some(Box::new(context)),
             other: None,
         }
@@ -150,13 +151,14 @@ impl Ast {
     pub fn new_functioncall_ast(
         func_name: &str,
         info: TokenInfo,
-        type_: Type,
+        functype: Type,
+        restype_: Type,
         args: Option<Vec<Ast>>,
     ) -> Ast {
         Ast {
-            kind: AstKind::FuncionCall(func_name.to_string()),
+            kind: AstKind::FuncionCall(func_name.to_string(), functype),
             info,
-            type_,
+            type_: restype_,
             left: None,
             right: None,
             operand: None,
@@ -207,7 +209,7 @@ impl Ast {
     }
 }
 
-fn ast_number(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+pub fn ast_number(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let (num, info) = tokens.consume_integer();
     let type_ = definitions.get_number_type(&num);
     match num {
@@ -216,7 +218,7 @@ fn ast_number(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     }
 }
 
-fn ast_variable(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+pub fn ast_variable(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let (ident, info) = tokens.consume_identifier();
     if let Some(val) = definitions.get_variable(&ident) {
         let val_type = val.get_type();
@@ -477,6 +479,7 @@ fn get_func_args(
                 if let Some(token) = tokens.get_next(cur + 1) {
                     if token.expect_symbol(&Symbol::LeftCurlyBracket) {
                         is_func_declaration = false;
+                        break;
                     } else {
                         break;
                     }
@@ -510,7 +513,10 @@ fn get_func_args(
             arg_tokens.push(arg_token);
         }
         arg_types.push(arg_type);
-        tokens.consume_symbol(Symbol::Colon);
+        if tokens.expect_symbol(Symbol::RightParenthesis) {
+            break;
+        }
+        tokens.consume_symbol(Symbol::Comma);
     }
 
     // consume ")"
@@ -532,13 +538,20 @@ fn ast_funcution_implementaion(
 ) -> Ast {
     // 関数実装ASTを作成
     definitions.initialize_local_scope();
+    let mut args_expr: Option<Vec<Ast>> = None;
     // 引数がある場合
     if let Some(ref argtypes) = func_type.function.as_ref().unwrap().args {
-        for (arg_type, (argname, argtoken)) in argtypes.iter().zip(argnames.unwrap().iter()) {
-            if let Err(_) = definitions.declar_local_val(argname, arg_type.clone()) {
-                output_alreadydeclared_variable_err(argtoken);
+        let mut expr_vec: Vec<Ast> = vec![];
+        for (arg_type, (argname, argtoken)) in argtypes.iter().zip(argnames.unwrap().into_iter()) {
+            if let Ok(val) = definitions.declare_local_val(&argname, arg_type.clone()) {
+                let type_ = val.get_type();
+                let ast = Ast::new_variable_ast(val, argtoken, type_);
+                expr_vec.push(ast);
+            } else {
+                output_alreadydeclared_variable_err(&argtoken);
             }
         }
+        args_expr = Some(expr_vec);
     }
     let expfunc_context_ast = ast_exprs(tokens, definitions);
     let frame_size = definitions.get_local_val_frame_size();
@@ -549,6 +562,7 @@ fn ast_funcution_implementaion(
         func_info,
         func_type,
         frame_size,
+        args_expr,
         expfunc_context_ast,
     )
 }
@@ -570,7 +584,7 @@ fn ast_function(
 
     let func = Function::new(arg_types, func_ret);
 
-    if let Ok(func_type) = definitions.declar_function(&func_name, func) {
+    if let Ok(func_type) = definitions.declare_function(&func_name, func) {
         if tokens.expect_symbol(Symbol::SemiColon) {
             tokens.consume_symbol(Symbol::SemiColon);
             return None;

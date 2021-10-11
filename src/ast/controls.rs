@@ -2,7 +2,8 @@ use crate::ast::ast::*;
 use crate::definition::definitions::Definitions;
 use crate::definition::reservedwords::*;
 use crate::definition::symbols::*;
-use crate::token::error::output_undefinedfunction_err;
+use crate::definition::types::Type;
+use crate::token::error::*;
 use crate::token::token::Tokens;
 
 // return = "return" assign
@@ -124,15 +125,67 @@ pub fn ast_break(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     Ast::new_control_ast(break_info, break_type, Control::Break, None, None, None)
 }
 
+fn ast_function_args(
+    args_types: &Option<Vec<Type>>,
+    tokens: &mut Tokens,
+    definitions: &mut Definitions,
+) -> Option<Vec<Ast>> {
+    // 引数ありの場合
+    if let Some(arg_types) = args_types {
+        let mut args_ast: Vec<Ast> = vec![];
+        tokens.consume_symbol(Symbol::LeftParenthesis); // consume "("
+        for (count, arg_type) in arg_types.iter().enumerate() {
+            //let type_;
+            let ast;
+            if tokens.expect_number() {
+                ast = ast_number(tokens, definitions);
+            } else if tokens.expect_identifier() {
+                ast = ast_variable(tokens, definitions);
+            } else {
+                output_unclosed_token_err(tokens);
+            }
+            // 現在は不要だが方のチェックを行う
+            if ast.type_ != *arg_type {
+                output_deefferenttype_err(tokens);
+            }
+            args_ast.push(ast);
+            if count == arg_types.len() - 1 {
+                break;
+            } else {
+                tokens.consume_symbol(Symbol::Comma);
+            }
+        }
+
+        if !tokens.expect_symbol(Symbol::RightParenthesis) {
+            output_incorrectarg_err(tokens);
+        }
+        tokens.consume(); // consume ")"
+        return Some(args_ast);
+    } else {
+        tokens.consume_symbol(Symbol::LeftParenthesis); // consume "("
+        if !tokens.expect_symbol(Symbol::RightParenthesis) {
+            output_incorrectarg_err(tokens);
+        }
+        tokens.consume(); // consume ")"
+        return None;
+    }
+}
+
 // functioncall = funcname "(" args ")"
 pub fn ast_functioncall(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let (funcname, info) = tokens.consume_identifier();
     if let Some(type_) = definitions.get_type(&funcname) {
-        let args: Option<Vec<Ast>> = None;
-        tokens.consume_symbol(Symbol::LeftParenthesis); // consume "("
-
-        tokens.consume_symbol(Symbol::RightParenthesis); // consume ")"
-        Ast::new_functioncall_ast(&funcname, info, type_, args)
+        let func = type_.function.as_ref().unwrap();
+        // 返り値の型を関数の型とする
+        let ret_type;
+        if let Some(ret) = &func.ret {
+            ret_type = ret.clone();
+        } else {
+            ret_type = definitions.get_type("void").unwrap();
+        }
+        // 引数を設定
+        let args = ast_function_args(&func.args, tokens, definitions);
+        Ast::new_functioncall_ast(&funcname, info, type_, ret_type, args)
     } else {
         output_undefinedfunction_err(&info);
     }

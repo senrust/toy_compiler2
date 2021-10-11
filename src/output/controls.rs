@@ -113,8 +113,7 @@ pub fn execute_break<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 }
 
 pub fn execute_funccall<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    if let AstKind::FuncionCall(fucname) = &ast.kind {
-        let functype = ast.type_.function.take().unwrap();
+    if let AstKind::FuncionCall(fucname, functype) = &ast.kind {
         // push args
         if let Some(args_ast) = &mut ast.exprs {
             let arg_count = args_ast.len();
@@ -128,7 +127,7 @@ pub fn execute_funccall<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         }
         buf.output(&format!("    call {}", fucname));
         // push ret
-        if let Some(_ret_type) = &functype.ret {
+        if let Some(_rettype) = &functype.function.as_ref().unwrap().ret {
             buf.output_push("rax");
         }
     } else {

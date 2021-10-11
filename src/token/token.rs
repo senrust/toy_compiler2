@@ -137,6 +137,8 @@ pub enum TokenError {
     UndefinedFunctionCallError,
     NotSameFunctionError,
     AlreadyImplementedFunctionError,
+    InCorrectArgError,
+    DefferentTypeError,
 }
 
 impl fmt::Display for TokenError {
@@ -171,6 +173,12 @@ impl fmt::Display for TokenError {
             }
             TokenError::AlreadyImplementedFunctionError => {
                 write!(f, "already implemented function")
+            }
+            TokenError::InCorrectArgError => {
+                write!(f, "incorrect arguments")
+            }
+            TokenError::DefferentTypeError => {
+                write!(f, "deffrent type")
             }
         }
     }

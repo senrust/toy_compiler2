@@ -23,7 +23,7 @@ pub fn cousume_type_token(tokens: &mut Tokens, definitions: &mut Definitions) ->
 pub fn local_val_declaration(tokens: &mut Tokens, definitions: &mut Definitions) {
     let type_ = cousume_type_token(tokens, definitions);
     let (name, info) = tokens.consume_identifier();
-    let declare_sucess = definitions.declar_local_val(&name, type_).is_ok();
+    let declare_sucess = definitions.declare_local_val(&name, type_).is_ok();
     if declare_sucess {
         tokens.consume_symbol(Symbol::SemiColon);
     } else {

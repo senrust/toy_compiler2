@@ -145,3 +145,8 @@ fn break_test() {
 fn funccall_test() {
     do_test("funccall");
 }
+
+#[test]
+fn funccallargs_test() {
+    do_test("funccall_args");
+}

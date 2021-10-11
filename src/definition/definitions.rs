@@ -42,8 +42,8 @@ impl Definitions {
         self.function.get_function(name)
     }
 
-    pub fn declar_function(&mut self, name: &str, function: Function) -> Result<Type, ()> {
-        if let Ok(_definedfunc) = self.function.declar_function(name, function.clone()) {
+    pub fn declare_function(&mut self, name: &str, function: Function) -> Result<Type, ()> {
+        if let Ok(_definedfunc) = self.function.declare_function(name, function.clone()) {
             if let Some(func_type) = self.type_.get_type(name) {
                 Ok(func_type)
             } else {
@@ -55,12 +55,12 @@ impl Definitions {
         }
     }
 
-    pub fn declar_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
-        self.variable.declar_global_val(name, type_)
+    pub fn declare_global_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
+        self.variable.declare_global_val(name, type_)
     }
 
-    pub fn declar_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
-        self.variable.declar_local_val(name, type_)
+    pub fn declare_local_val(&mut self, name: &str, type_: Type) -> Result<Variable, ()> {
+        self.variable.declare_local_val(name, type_)
     }
 
     pub fn get_variable(&self, name: &str) -> Option<Variable> {

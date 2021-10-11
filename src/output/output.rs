@@ -5,7 +5,6 @@ use std::path::Path;
 use crate::ast::ast::*;
 use crate::ast::error::*;
 use crate::definition::number::Number;
-use crate::definition::types::Type;
 use crate::definition::variables::*;
 use crate::output::controls::*;
 
@@ -356,17 +355,27 @@ pub fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         AstKind::ImmidiateInterger(_num) => push_number(ast, buf),
         AstKind::Variable(_val) => push_variable_value(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
-        AstKind::FuncionCall(_func) => execute_funccall(ast, buf),
+        AstKind::FuncionCall(_func, _type) => execute_funccall(ast, buf),
         _ => unsupported_ast_err(ast),
     }
 }
 
+fn output_push_arg_to_stack<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    push_variable_address(ast, buf);
+    write_pop_two_values(buf);
+    buf.output("    mov [rax], rdi");
+}
+
 // 引数をローカルスタックに格納する
-pub fn output_push_args_to_stack<T: Write>(func_type: &Type, buf: &mut OutputBuffer<T>) {
-    let func = func_type.function.as_ref().unwrap();
-    if let Some(args) = &func.args {
-        for _arg in args {
-            
+pub fn output_push_args_to_stack<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    if let Some(args_ast) = &mut ast.exprs {
+        let argcount = args_ast.len();
+        // 後ろの引数からスタックに積んでいく
+        for register in FUNC_ARG_REGISTERS[0..argcount].iter().rev() {
+            buf.output_push(*register);
+        }
+        for arg_ast in args_ast {
+            output_push_arg_to_stack(arg_ast, buf);
         }
     }
 }
@@ -377,7 +386,7 @@ fn output_function<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
             output_function_prelude(func_name, local_val_size, buf);
             let mut func_context_ast = ast.context.take().unwrap();
             // 引数をスタックフレームに格納
-            output_push_args_to_stack(&ast.type_, buf);
+            output_push_args_to_stack(ast, buf);
             output_ast(func_context_ast.as_mut(), buf);
             output_function_epilogue(buf);
         }
