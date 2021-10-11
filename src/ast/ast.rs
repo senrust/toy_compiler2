@@ -462,24 +462,84 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     Ast::new_expressions_ast(exprs_info, exprs_type, exprs, None)
 }
 
-// 関数の引数を取得します
-fn get_func_args(tokens: &mut Tokens, _definitions: &mut Definitions) -> Option<Vec<Type>> {
+// 関数の引数を取得
+// もし関数実装で引数名が与えられない場合はエラー
+fn get_func_args(
+    tokens: &mut Tokens,
+    definitions: &mut Definitions,
+) -> (Option<Vec<Type>>, Option<Vec<(String, TokenInfo)>>) {
+    // 関数宣言か, 関数実装か判断する
+    let mut is_func_declaration = false;
+    let mut cur = 1;
+    loop {
+        if let Some(token) = tokens.get_next(cur) {
+            if token.expect_symbol(&Symbol::RightParenthesis) {
+                if let Some(token) = tokens.get_next(cur + 1) {
+                    if token.expect_symbol(&Symbol::LeftCurlyBracket) {
+                        is_func_declaration = false;
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            } else {
+                cur += 1;
+            }
+        } else {
+            break;
+        }
+    }
+
+    let mut arg_types: Vec<Type> = vec![];
+    let mut arg_tokens: Vec<(String, TokenInfo)> = vec![];
+
     // consume "("
     tokens.consume_symbol(Symbol::LeftParenthesis);
+    while !tokens.expect_symbol(Symbol::RightParenthesis) {
+        let arg_type = cousume_type_token(tokens, definitions);
+        // 変数名でない
+        if !tokens.expect_identifier() {
+            // 関数実装の場合は変数を指定しなければならない
+            // 関数宣言は使用しないので問題ない
+            if !is_func_declaration {
+                output_unexpected_token_err(tokens);
+            }
+        } else {
+            let arg_token = tokens.consume_identifier();
+            arg_tokens.push(arg_token);
+        }
+        arg_types.push(arg_type);
+        tokens.consume_symbol(Symbol::Colon);
+    }
+
     // consume ")"
     tokens.consume_symbol(Symbol::RightParenthesis);
-    None
+    if arg_types.is_empty() {
+        (None, None)
+    } else {
+        (Some(arg_types), Some(arg_tokens))
+    }
 }
 
 fn ast_funcution_implementaion(
     func_name: String,
     func_info: TokenInfo,
     func_type: Type,
+    argnames: Option<Vec<(String, TokenInfo)>>,
     tokens: &mut Tokens,
     definitions: &mut Definitions,
 ) -> Ast {
     // 関数実装ASTを作成
     definitions.initialize_local_scope();
+    // 引数がある場合
+    if let Some(ref argtypes) = func_type.function.as_ref().unwrap().args {
+        for (arg_type, (argname, argtoken)) in argtypes.iter().zip(argnames.unwrap().iter()) {
+            if let Err(_) = definitions.declar_local_val(argname, arg_type.clone()) {
+                output_alreadydeclared_variable_err(argtoken);
+            }
+        }
+    }
     let expfunc_context_ast = ast_exprs(tokens, definitions);
     let frame_size = definitions.get_local_val_frame_size();
     definitions.clear_local_val_scope();
@@ -500,28 +560,34 @@ fn ast_function(
     tokens: &mut Tokens,
     definitions: &mut Definitions,
 ) -> Option<Ast> {
-    let func_args = get_func_args(tokens, definitions);
+    let (arg_types, arg_tokens) = get_func_args(tokens, definitions);
     let func_ret;
     if ret_type == definitions.get_type("void").unwrap() {
         func_ret = None;
     } else {
         func_ret = Some(ret_type);
     }
-    let func = Function::new(func_args, func_ret);
+
+    let func = Function::new(arg_types, func_ret);
+
     if let Ok(func_type) = definitions.declar_function(&func_name, func) {
         if tokens.expect_symbol(Symbol::SemiColon) {
             tokens.consume_symbol(Symbol::SemiColon);
             return None;
         } else if tokens.expect_symbol(Symbol::LeftCurlyBracket) {
+            if !definitions.can_implement_function(&func_name) {
+                output_alreadyimplementedfunction_err(&func_info);
+            }
             Some(ast_funcution_implementaion(
                 func_name,
                 func_info,
                 func_type,
+                arg_tokens,
                 tokens,
                 definitions,
             ))
         } else {
-            output_unexpected_token_err(tokens);
+            output_notsamefunction_err(&func_info);
         }
     } else {
         output_unexpected_token_err(tokens);

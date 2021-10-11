@@ -1,0 +1,13 @@
+long add(long a, long b) {
+    return a + b;
+}
+
+long main(){
+    long a;
+    long b;
+    long c;
+    a = 10;
+    b = 10;
+    c = add(a, b)  - 10;
+    return c;
+}

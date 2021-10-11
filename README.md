@@ -4,26 +4,22 @@
 注意  
 現段階ではC言語コンパイラと呼べるものにはなっていません。  
 型はlong型しか使用できません。 
-long型の四則演算, 比較演算, 制御構文(if-else, for, while, break, return)のコンパイルが可能な程度です。   
+long型の四則演算, 比較演算, 制御構文(if-else, for, while, break, return), 関数のコンパイルが可能な程度です。   
 
 #### 現在コンパイル可能なソースコード
 ```
-long num() {
-    return 10;
+long add(long a, long b) {
+    return a + b;
 }
 
-long main() {
+long main(){
     long a;
     long b;
-    b = num();
-    for (a = 0; a == 10; a = a + 1){
-        b = b + 1;
-    }
-    if (a + b != 5) {
-        return 0;
-    } else {
-        return 1;
-    }
+    long c;
+    a = 10;
+    b = 10;
+    c = add(a, b)  - 10;
+    return c;
 }
 ```
 

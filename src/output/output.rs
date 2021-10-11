@@ -5,8 +5,11 @@ use std::path::Path;
 use crate::ast::ast::*;
 use crate::ast::error::*;
 use crate::definition::number::Number;
+use crate::definition::types::Type;
 use crate::definition::variables::*;
 use crate::output::controls::*;
+
+pub const FUNC_ARG_REGISTERS: [&str; 5] = ["rdi", "rdx", "rcx", "r8", "r9"];
 
 #[derive(PartialEq, Debug)]
 pub enum LoopKind {
@@ -358,11 +361,23 @@ pub fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     }
 }
 
+// 引数をローカルスタックに格納する
+pub fn output_push_args_to_stack<T: Write>(func_type: &Type, buf: &mut OutputBuffer<T>) {
+    let func = func_type.function.as_ref().unwrap();
+    if let Some(args) = &func.args {
+        for _arg in args {
+            
+        }
+    }
+}
+
 fn output_function<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::FunctionImplementation((func_name, local_val_size)) => {
             output_function_prelude(func_name, local_val_size, buf);
             let mut func_context_ast = ast.context.take().unwrap();
+            // 引数をスタックフレームに格納
+            output_push_args_to_stack(&ast.type_, buf);
             output_ast(func_context_ast.as_mut(), buf);
             output_function_epilogue(buf);
         }

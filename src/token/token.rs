@@ -135,6 +135,8 @@ pub enum TokenError {
     AlreadyDeclaredVariableError,
     NotEnoughTokenError,
     UndefinedFunctionCallError,
+    NotSameFunctionError,
+    AlreadyImplementedFunctionError,
 }
 
 impl fmt::Display for TokenError {
@@ -163,6 +165,12 @@ impl fmt::Display for TokenError {
             }
             TokenError::UndefinedFunctionCallError => {
                 write!(f, "undefined function")
+            }
+            TokenError::NotSameFunctionError => {
+                write!(f, "not same previous definition")
+            }
+            TokenError::AlreadyImplementedFunctionError => {
+                write!(f, "already implemented function")
             }
         }
     }
@@ -194,8 +202,12 @@ impl Tokens {
         self.vec.get(self.cur)
     }
 
-    pub fn get_prev(&self) -> Option<&Token> {
-        self.vec.get(self.cur - 1)
+    pub fn get_prev(&self, offset: usize) -> Option<&Token> {
+        self.vec.get(self.cur - offset)
+    }
+
+    pub fn get_next(&self, offset: usize) -> Option<&Token> {
+        self.vec.get(self.cur + offset)
     }
 
     pub fn get_tail(&self) -> Option<&Token> {

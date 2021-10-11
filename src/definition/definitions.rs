@@ -1,9 +1,12 @@
+use std::collections::HashSet;
+
 use crate::definition::{functions::*, number::*, types::*, variables::*};
 
 pub struct Definitions {
     type_: TypesDefinitions,
     variable: VariableDeclarations,
     function: FunctionDefinitions,
+    implemented_function: HashSet<String>,
 }
 
 impl Definitions {
@@ -15,6 +18,7 @@ impl Definitions {
             type_,
             variable,
             function,
+            implemented_function: HashSet::new(),
         }
     }
 
@@ -81,5 +85,9 @@ impl Definitions {
 
     pub fn clear_local_val_scope(&mut self) {
         self.variable.clear_local_val_scope()
+    }
+
+    pub fn can_implement_function(&mut self, funcname: &str) -> bool {
+        self.implemented_function.insert(funcname.to_string())
     }
 }

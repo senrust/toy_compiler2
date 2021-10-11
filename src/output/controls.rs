@@ -4,12 +4,6 @@ use crate::ast::ast::*;
 use crate::ast::error::*;
 use crate::output::output::*;
 
-macro_rules! func_arg_register {
-    () => {
-        ["rdi", "rdx", "rcx", "r8", "r9"]
-    };
-}
-
 // return文のコンパイル
 // returnする値のastはexprs[0]
 pub fn execute_return<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
@@ -129,8 +123,7 @@ pub fn execute_funccall<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
             }
             // set args in register
             for i in 0..arg_count {
-                let registers = func_arg_register!();
-                buf.output_pop(registers[i]);
+                buf.output_pop(FUNC_ARG_REGISTERS[i]);
             }
         }
         buf.output(&format!("    call {}", fucname));

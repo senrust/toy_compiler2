@@ -90,6 +90,16 @@ fn undefinedfunction_err(info: &TokenInfo) -> ! {
     exit(-1);
 }
 
+fn notsamefunction_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::NotSameFunctionError, info);
+    exit(-1);
+}
+
+fn alreadyimplentedfunction_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::AlreadyImplementedFunctionError, info);
+    exit(-1);
+}
+
 pub fn output_unclosed_token_err(tokens: &Tokens) -> ! {
     let err_token;
     if tokens.is_empty() {
@@ -105,7 +115,7 @@ pub fn output_unexpected_token_err(tokens: &Tokens) -> ! {
     if let Some(err_token) = tokens.get() {
         unexpected_token_err(&err_token.info);
     } else {
-        let prev_token = tokens.get_prev().unwrap();
+        let prev_token = tokens.get_prev(1).unwrap();
         notenough_token_err(&prev_token.info);
     }
 }
@@ -120,4 +130,12 @@ pub fn output_alreadydeclared_variable_err(info: &TokenInfo) -> ! {
 
 pub fn output_undefinedfunction_err(info: &TokenInfo) -> ! {
     undefinedfunction_err(info);
+}
+
+pub fn output_notsamefunction_err(info: &TokenInfo) -> ! {
+    notsamefunction_err(info);
+}
+
+pub fn output_alreadyimplementedfunction_err(info: &TokenInfo) -> ! {
+    alreadyimplentedfunction_err(info);
 }

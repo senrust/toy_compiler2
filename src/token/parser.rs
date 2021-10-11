@@ -32,20 +32,12 @@ macro_rules! symbols_without_dot_or_space {
     };
 }
 
-macro_rules! twochars_symbol_array {
-    () => {
-        [
-            "<<", ">>", "++", "--", "==", "!=", "<=", ">=", "||", "&&", "+=", "-=", "*=", "/=",
-            "%=", "&=", "^=", "|=", "->",
-        ]
-    };
-}
+const TWOCHARS_SYMBOL_ARRAY: [&str; 19] = [
+    "<<", ">>", "++", "--", "==", "!=", "<=", ">=", "||", "&&", "+=", "-=", "*=", "/=", "%=", "&=",
+    "^=", "|=", "->",
+];
 
-macro_rules! threechars_symbol_array {
-    () => {
-        ["<<=", ">>="]
-    };
-}
+const THREECHARS_SYMBOL_ARRAY: [&str; 2] = ["<<=", ">>="];
 
 // トークン種別
 // ただしNumberは妥当な数字の文字列かチェックしていない
@@ -293,7 +285,7 @@ fn get_mult_symbol(parse_line: &mut LineParser, rawtoken_chars: &mut Vec<char>) 
         }
     }
     let mut found_towchars_symbol = false;
-    for symbol in twochars_symbol_array!() {
+    for symbol in TWOCHARS_SYMBOL_ARRAY {
         if rawtoken_string == symbol {
             found_towchars_symbol = true;
             break;
@@ -314,7 +306,7 @@ fn get_mult_symbol(parse_line: &mut LineParser, rawtoken_chars: &mut Vec<char>) 
         }
     }
     let mut found_threechars_symbol = false;
-    for symbol in threechars_symbol_array!() {
+    for symbol in THREECHARS_SYMBOL_ARRAY {
         if rawtoken_string == symbol {
             found_threechars_symbol = true;
             break;
