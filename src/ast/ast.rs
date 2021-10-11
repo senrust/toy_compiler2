@@ -448,12 +448,13 @@ fn get_func_args(tokens: &mut Tokens, _definitions: &mut Definitions) -> Option<
     None
 }
 
-fn ast_funcution_implementaion(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    // 関数定義
-    let (func_name, info) = tokens.consume_identifier();
-    let func_args = get_func_args(tokens, definitions);
-    let func = Function::new(func_args, None);
-    let func_type = definitions.declar_function(&func_name, func).unwrap();
+fn ast_funcution_implementaion(
+    func_name: String,
+    func_info: TokenInfo,
+    func_type: Type,
+    tokens: &mut Tokens,
+    definitions: &mut Definitions,
+) -> Ast {
     // 関数実装ASTを作成
     definitions.initialize_local_scope();
     let expfunc_context_ast = ast_exprs(tokens, definitions);
@@ -461,19 +462,66 @@ fn ast_funcution_implementaion(tokens: &mut Tokens, definitions: &mut Definition
     // 関数AST作成
     Ast::new_function_implementation_ast(
         &func_name,
-        info,
+        func_info,
         func_type,
         frame_size,
         expfunc_context_ast,
     )
 }
 
+fn ast_function(
+    func_name: String,
+    func_info: TokenInfo,
+    ret_type: Type,
+    tokens: &mut Tokens,
+    definitions: &mut Definitions,
+) -> Option<Ast> {
+    let func_args = get_func_args(tokens, definitions);
+    let func_ret;
+    if ret_type == definitions.get_type("void").unwrap() {
+        func_ret = None;
+    } else {
+        func_ret = Some(ret_type);
+    }
+    let func = Function::new(func_args, func_ret);
+    if let Ok(func_type) = definitions.declar_function(&func_name, func) {
+        if tokens.expect_symbol(Symbol::SemiColon) {
+            tokens.consume_symbol(Symbol::SemiColon);
+            return None;
+        } else if tokens.expect_symbol(Symbol::LeftCurlyBracket) {
+            Some(ast_funcution_implementaion(
+                func_name,
+                func_info,
+                func_type,
+                tokens,
+                definitions,
+            ))
+        } else {
+            output_unexpected_token_err(tokens);
+        }
+    } else {
+        output_unexpected_token_err(tokens);
+    }
+}
+
+// グローバル変数定義, 関数宣言, 関数実装を行う
+fn ast_global(tokens: &mut Tokens, definitions: &mut Definitions) -> Option<Ast> {
+    let type_ = cousume_type_token(tokens, definitions);
+    let (name, info) = tokens.consume_identifier();
+    if tokens.expect_symbol(Symbol::LeftParenthesis) {
+        ast_function(name, info, type_, tokens, definitions)
+    } else {
+        output_unexpected_token_err(tokens);
+    }
+}
+
 pub fn make_asts(mut tokens: Tokens) -> Vec<Ast> {
     let mut asts: Vec<Ast> = vec![];
     let mut definitions = Definitions::new();
     while tokens.has_token() {
-        let ast = ast_funcution_implementaion(&mut tokens, &mut definitions);
-        asts.push(ast);
+        if let Some(func_ast) = ast_global(&mut tokens, &mut definitions) {
+            asts.push(func_ast);
+        }
     }
     asts
 }

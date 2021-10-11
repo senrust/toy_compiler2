@@ -1,4 +1,4 @@
-main () {
+long main () {
     long a;
     long b;
     a = 10;

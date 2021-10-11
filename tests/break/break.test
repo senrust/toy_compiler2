@@ -1,4 +1,4 @@
-main() {
+long main() {
     long a;
     a = 0;
     while (a < 10) {

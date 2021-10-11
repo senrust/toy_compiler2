@@ -1,4 +1,4 @@
-main()
+long main()
 {
     return 0 - 4 * 2 / 2 + 8 * 2 - 10 / 5;
 }

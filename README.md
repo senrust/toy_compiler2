@@ -8,7 +8,7 @@ long型の四則演算, 比較演算, 制御構文(if-else, for, while, break, r
 
 #### 現在コンパイル可能なソースコード
 ```
-main() {
+long main() {
     long a;
     long b;
     b = 0;

@@ -1,4 +1,4 @@
-main(){
+long main(){
     long a;
     return a = (10 - 5) * 2;
 }
