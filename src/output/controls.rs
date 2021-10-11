@@ -4,13 +4,15 @@ use crate::ast::ast::*;
 use crate::ast::error::*;
 use crate::output::output::*;
 
+macro_rules! func_arg_register {
+    () => {
+        ["rdi", "rdx", "rcx", "r8", "r9"]
+    };
+}
+
 // return文のコンパイル
 // returnする値のastはexprs[0]
 pub fn execute_return<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Control(Control::Return) => (),
-        _ => unexpected_ast_err(ast, "return"),
-    }
     let mut expr = ast.exprs.take().unwrap();
     let return_value = expr.first_mut().unwrap();
     output_ast(return_value, buf);
@@ -21,11 +23,6 @@ pub fn execute_return<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 // if文のコンパイル
 // if文の条件はcontext, true時の条件はother[0], elseがある場合はelse時の条件はother[1]にある
 pub fn execute_if<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Control(Control::If) => (),
-        _ => unexpected_ast_err(ast, "if"),
-    }
-
     let label_index = buf.get_label_index();
 
     // 条件式のコンパイル
@@ -55,10 +52,6 @@ pub fn execute_if<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 // for文のコンパイル
 // for文はexprs[0]に初期化式, exprs[1]に条件式, exprs[2]に更新式がある
 pub fn execute_for<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Control(Control::For) => (),
-        _ => unexpected_ast_err(ast, "for"),
-    }
     // ループ情報の作成
     buf.enter_loop_control(LoopKind::For);
     let label_index = buf.get_label_index();
@@ -94,10 +87,6 @@ pub fn execute_for<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 // while文はcontextに条件式,
 // expr[0]にwhile内容がある
 pub fn execute_while<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Control(Control::While) => (),
-        _ => unexpected_ast_err(ast, "while"),
-    }
     // ループ情報の作成
     buf.enter_loop_control(LoopKind::While);
     let label_index = buf.get_label_index();
@@ -122,13 +111,34 @@ pub fn execute_while<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 
 // break文のコンパイル
 pub fn execute_break<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Control(Control::Break) => (),
-        _ => unexpected_ast_err(ast, "break"),
-    }
     if let Ok(break_dist_label) = buf.get_break_label() {
         buf.output(&break_dist_label);
     } else {
         invalid_direction_err(ast, "break");
+    }
+}
+
+pub fn execute_funccall<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    if let AstKind::FuncionCall(fucname) = &ast.kind {
+        let functype = ast.type_.function.take().unwrap();
+        // push args
+        if let Some(args_ast) = &mut ast.exprs {
+            let arg_count = args_ast.len();
+            for arg_ast in args_ast {
+                output_ast(arg_ast, buf);
+            }
+            // set args in register
+            for i in 0..arg_count {
+                let registers = func_arg_register!();
+                buf.output_pop(registers[i]);
+            }
+        }
+        buf.output(&format!("    call {}", fucname));
+        // push ret
+        if let Some(_ret_type) = &functype.ret {
+            buf.output_push("rax");
+        }
+    } else {
+        invalid_direction_err(ast, "call function");
     }
 }

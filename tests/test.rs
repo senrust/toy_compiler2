@@ -140,3 +140,8 @@ fn while_test() {
 fn break_test() {
     do_test("break");
 }
+
+#[test]
+fn funccall_test() {
+    do_test("funccall");
+}

@@ -3,8 +3,8 @@ use std::{collections::HashMap, ops::Deref};
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    args: Option<Vec<Type>>,
-    ret: Option<Type>,
+    pub args: Option<Vec<Type>>,
+    pub ret: Option<Type>,
 }
 
 impl Function {

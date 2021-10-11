@@ -147,6 +147,25 @@ impl Ast {
         }
     }
 
+    pub fn new_functioncall_ast(
+        func_name: &str,
+        info: TokenInfo,
+        type_: Type,
+        args: Option<Vec<Ast>>,
+    ) -> Ast {
+        Ast {
+            kind: AstKind::FuncionCall(func_name.to_string()),
+            info,
+            type_,
+            left: None,
+            right: None,
+            operand: None,
+            exprs: args,
+            context: None,
+            other: None,
+        }
+    }
+
     fn new_expressions_ast(
         info: TokenInfo,
         type_: Type,
@@ -207,12 +226,16 @@ fn ast_variable(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     }
 }
 
-// primary = num | variable | "(" add ")"
+// primary = num | variable | functioncall | "(" add ")"
 fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_number() {
         ast_number(tokens, definitions)
     } else if tokens.expect_identifier() {
-        ast_variable(tokens, definitions)
+        if tokens.expect_next_symbol(Symbol::LeftParenthesis, 1) {
+            ast_functioncall(tokens, definitions)
+        } else {
+            ast_variable(tokens, definitions)
+        }
     } else if tokens.expect_symbol(Symbol::LeftParenthesis) {
         // drop "(" token
         tokens.consume_symbol(Symbol::LeftParenthesis);
@@ -459,6 +482,7 @@ fn ast_funcution_implementaion(
     definitions.initialize_local_scope();
     let expfunc_context_ast = ast_exprs(tokens, definitions);
     let frame_size = definitions.get_local_val_frame_size();
+    definitions.clear_local_val_scope();
     // 関数AST作成
     Ast::new_function_implementation_ast(
         &func_name,

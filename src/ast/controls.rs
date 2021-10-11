@@ -2,6 +2,7 @@ use crate::ast::ast::*;
 use crate::definition::definitions::Definitions;
 use crate::definition::reservedwords::*;
 use crate::definition::symbols::*;
+use crate::token::error::output_undefinedfunction_err;
 use crate::token::token::Tokens;
 
 // return = "return" assign
@@ -121,4 +122,18 @@ pub fn ast_break(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let break_info = tokens.consume_reserved(Reserved::Break);
     let break_type = definitions.get_type("void").unwrap();
     Ast::new_control_ast(break_info, break_type, Control::Break, None, None, None)
+}
+
+// functioncall = funcname "(" args ")"
+pub fn ast_functioncall(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    let (funcname, info) = tokens.consume_identifier();
+    if let Some(type_) = definitions.get_type(&funcname) {
+        let args: Option<Vec<Ast>> = None;
+        tokens.consume_symbol(Symbol::LeftParenthesis); // consume "("
+
+        tokens.consume_symbol(Symbol::RightParenthesis); // consume ")"
+        Ast::new_functioncall_ast(&funcname, info, type_, args)
+    } else {
+        output_undefinedfunction_err(&info);
+    }
 }

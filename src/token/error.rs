@@ -85,6 +85,11 @@ fn alreadydeclared_variable_err(info: &TokenInfo) -> ! {
     exit(-1);
 }
 
+fn undefinedfunction_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::UndefinedFunctionCallError, info);
+    exit(-1);
+}
+
 pub fn output_unclosed_token_err(tokens: &Tokens) -> ! {
     let err_token;
     if tokens.is_empty() {
@@ -111,4 +116,8 @@ pub fn output_undeclared_variable_err(info: &TokenInfo) -> ! {
 
 pub fn output_alreadydeclared_variable_err(info: &TokenInfo) -> ! {
     alreadydeclared_variable_err(info);
+}
+
+pub fn output_undefinedfunction_err(info: &TokenInfo) -> ! {
+    undefinedfunction_err(info);
 }

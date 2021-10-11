@@ -134,6 +134,7 @@ pub enum TokenError {
     UnDeclaredVariableError,
     AlreadyDeclaredVariableError,
     NotEnoughTokenError,
+    UndefinedFunctionCallError,
 }
 
 impl fmt::Display for TokenError {
@@ -159,6 +160,9 @@ impl fmt::Display for TokenError {
             }
             TokenError::NotEnoughTokenError => {
                 write!(f, "identifiler is nesesarry after this token")
+            }
+            TokenError::UndefinedFunctionCallError => {
+                write!(f, "undefined function")
             }
         }
     }
@@ -217,6 +221,15 @@ impl Tokens {
 
     pub fn expect_symbol(&self, symbol: Symbol) -> bool {
         if let Some(token) = self.vec.get(self.cur) {
+            if token.expect_symbol(&symbol) {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn expect_next_symbol(&self, symbol: Symbol, step: usize) -> bool {
+        if let Some(token) = self.vec.get(self.cur + step) {
             if token.expect_symbol(&symbol) {
                 return true;
             }

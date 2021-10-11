@@ -1,0 +1,11 @@
+long num() {
+    return 10;
+}
+
+long main(){
+    long a;
+    long b;
+    a = 10;
+    b = num() + 2;
+    return a + b;
+}

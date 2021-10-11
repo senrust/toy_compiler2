@@ -110,6 +110,7 @@ pub fn output_function_prelude<T: Write>(
     buf: &mut OutputBuffer<T>,
 ) {
     let func_label = &format!("{}:", func_name);
+    buf.output("");
     buf.output(func_label);
     buf.output_push("rbp");
     buf.output("    mov rbp, rsp");
@@ -274,20 +275,11 @@ fn exetute_comp<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 }
 
 fn exetute_not<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Operation(Operation::Not) => (),
-        _ => unexpected_ast_err(ast, "operation !"),
-    }
-
     output_ast(ast.operand.take().unwrap().as_mut(), buf);
     write_value_compararison(buf, "sete", 0);
 }
 
 fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Operation(Operation::Assign) => (),
-        _ => unexpected_ast_err(ast, "operation ="),
-    }
     // 左辺値が被代入可能か確認
     let left_ast = ast.left.take().unwrap();
     if let AstKind::Variable(_val) = &left_ast.kind {
@@ -302,10 +294,6 @@ fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 
 // 複文のコンパイル
 fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    match ast.kind {
-        AstKind::Expressions => (),
-        _ => unexpected_ast_err(ast, "{} block"),
-    }
     let expr_ast_vec = ast.exprs.take().unwrap();
     for mut expr_ast in expr_ast_vec {
         output_ast(&mut expr_ast, buf);
@@ -365,12 +353,12 @@ pub fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         AstKind::ImmidiateInterger(_num) => push_number(ast, buf),
         AstKind::Variable(_val) => push_variable_value(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
+        AstKind::FuncionCall(_func) => execute_funccall(ast, buf),
         _ => unsupported_ast_err(ast),
     }
 }
 
 fn output_function<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    // 現状は1関数のみなのでmainだけ
     match &ast.kind {
         AstKind::FunctionImplementation((func_name, local_val_size)) => {
             output_function_prelude(func_name, local_val_size, buf);
@@ -385,7 +373,6 @@ fn output_function<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 fn write_assembly_header<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output(".intel_syntax noprefix");
     buf.output(".globl main");
-    buf.output("");
 }
 
 pub fn output_assembly(asts: Vec<Ast>, output_file: &Path) {
