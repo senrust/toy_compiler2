@@ -97,7 +97,12 @@ pub fn check_reserved_word(indentifiler: &str) -> Option<Reserved> {
 pub fn check_primitivetype_reserved_word(reserved: &Reserved) -> bool {
     matches!(
         reserved,
-        Reserved::Long | Reserved::Int | Reserved::Short | Reserved::Char | Reserved::Void | Reserved::Void
+        Reserved::Long
+            | Reserved::Int
+            | Reserved::Short
+            | Reserved::Char
+            | Reserved::Void
+            | Reserved::Unsigned
     )
 }
 

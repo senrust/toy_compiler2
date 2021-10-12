@@ -167,10 +167,6 @@ impl Type {
     pub fn is_pointer(&self) -> bool {
         self.pointer.is_some()
     }
-
-    pub fn deref_pointer(&self) -> Option<Rc<Type>> {
-        self.pointer.as_ref().cloned()
-    }
 }
 
 pub struct TypesDefinitions {

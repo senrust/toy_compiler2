@@ -32,6 +32,8 @@ pub enum Operation {
     BitNot, // ~
     And,    // &&
     Or,     // ||
+    Address,
+    Deref,
 }
 
 #[derive(Debug, Clone, PartialEq)]

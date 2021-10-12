@@ -147,7 +147,7 @@ fn ast_function_args(
             }
             // 現在は不要だが方のチェックを行う
             if ast.type_ != *arg_type {
-                output_deefferenttype_err(tokens);
+                output_defferenttype_err(tokens);
             }
             args_ast.push(ast);
             if count == arg_types.len() - 1 {

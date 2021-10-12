@@ -120,7 +120,6 @@ fn exetute_bitnot<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     buf.output_push("rax");
 }
 
-
 fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     // 左辺値が被代入可能か確認
     let left_ast = ast.left.take().unwrap();
@@ -155,10 +154,9 @@ fn exetute_logical_and<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let end_label_index = buf.label_index + 2;
     let false_label = format!("Label{}:", false_label_index);
     let end_label = format!("Label{}:", end_label_index);
-    let jump_false =  format!("    je Label{}", false_label_index);
-    let jump_end =  format!("    jmp Label{}", false_label_index);
+    let jump_false = format!("    je Label{}", false_label_index);
+    let jump_end = format!("    jmp Label{}", false_label_index);
     buf.label_index += 2;
-
 
     let comp_zero = format!("    cmp rax, 0");
     // 左側の値を計算
@@ -185,7 +183,7 @@ fn exetute_logical_and<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     buf.output(&false_label);
     buf.output_push_num(0);
     buf.output(&end_label);
-} 
+}
 
 fn exetute_logical_or<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     // ORがネストされた状態((A || B || C)内のどれかで1になったらネストを抜けた先までジャンプできる
@@ -196,11 +194,10 @@ fn exetute_logical_or<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let true_label = format!("Label{}:", true_label_index);
     let false_label = format!("Label{}:", false_label_index);
     let end_label = format!("Label{}:", end_label_index);
-    let jump_true =  format!("    jne Label{}", true_label_index);
-    let jump_false =  format!("    je Label{}", false_label_index);
-    let jump_end =  format!("    jmp Label{}", false_label_index);
+    let jump_true = format!("    jne Label{}", true_label_index);
+    let jump_false = format!("    je Label{}", false_label_index);
+    let jump_end = format!("    jmp Label{}", false_label_index);
     buf.label_index += 3;
-
 
     let comp_zero = format!("    cmp rax, 0");
     // 左側の値を計算
@@ -238,15 +235,17 @@ pub fn output_operation_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) 
         AstKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
         AstKind::Operation(Operation::Div | Operation::Rem) => exetute_div(ast, buf),
         AstKind::Operation(Operation::Eq | Operation::NotEq) => exetute_eq(ast, buf),
-        AstKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => 
-            exetute_comp(ast, buf),
+        AstKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => {
+            exetute_comp(ast, buf)
+        }
         AstKind::Operation(Operation::Not) => exetute_not(ast, buf),
         AstKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
-        AstKind::Operation(Operation::BitAnd | Operation::BitOr | Operation::BitXor) => 
-            exetute_bit_operation(ast, buf),
+        AstKind::Operation(Operation::BitAnd | Operation::BitOr | Operation::BitXor) => {
+            exetute_bit_operation(ast, buf)
+        }
         AstKind::Operation(Operation::BitNot) => exetute_bitnot(ast, buf),
         AstKind::Operation(Operation::And) => exetute_logical_and(ast, buf),
-        AstKind::Operation(Operation::Or) =>  exetute_logical_or(ast, buf),
+        AstKind::Operation(Operation::Or) => exetute_logical_or(ast, buf),
         _ => unsupported_ast_err(ast),
     }
 }

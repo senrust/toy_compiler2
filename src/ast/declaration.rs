@@ -5,6 +5,7 @@ use crate::token::error::*;
 use crate::token::token::Tokens;
 
 pub fn is_type_token(tokens: &mut Tokens, _definitions: &mut Definitions) -> bool {
+    // 現在はプリミティブ型のみ対応
     if tokens.expect_primitivetype() {
         true
     } else {
@@ -13,11 +14,23 @@ pub fn is_type_token(tokens: &mut Tokens, _definitions: &mut Definitions) -> boo
 }
 
 pub fn cousume_type_token(tokens: &mut Tokens, definitions: &mut Definitions) -> Type {
+    // 現在はプリミティブ型のみ対応
+    let mut type_: Type;
     if let Ok(primitive_type) = tokens.get_primitivetype() {
-        definitions.get_primitive_type(&primitive_type)
+        type_ = definitions.get_primitive_type(&primitive_type);
     } else {
         output_unexpected_token_err(tokens);
     }
+    // ポインター型
+    loop {
+        if tokens.expect_symbol(Symbol::Mul) {
+            tokens.consume_symbol(Symbol::Mul);
+            type_ = Type::new_pointer(type_);
+        } else {
+            break;
+        }
+    }
+    type_
 }
 
 pub fn local_val_declaration(tokens: &mut Tokens, definitions: &mut Definitions) {

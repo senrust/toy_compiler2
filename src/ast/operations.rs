@@ -2,10 +2,13 @@ use crate::ast::ast::*;
 use crate::definition::definitions::Definitions;
 use crate::definition::number::Number;
 use crate::definition::symbols::*;
-use crate::definition::types::evaluate_binary_operation_type;
+use crate::definition::types::{evaluate_binary_operation_type, Type};
+use crate::token::error::*;
 use crate::token::token::*;
+use std::ops::Deref;
 
-// unary = primary |  + primary |  - primary | ! primary
+// unary = primary |  "+" unary |  "-" unary | "!" unary |  "~" unary | "&" unary |  "*" unary
+// この部分の規格は不明
 pub fn ast_unary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_symbol(Symbol::Add) {
         // drop "+" token
@@ -21,17 +24,31 @@ pub fn ast_unary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     } else if tokens.expect_symbol(Symbol::Not) {
         // drop "!" token
         let not_info = tokens.consume_symbol(Symbol::Not);
-        let operand_ast = ast_primary(tokens, definitions);
-        // とりあえず8バイトにしておく
-        let type_ = definitions.get_type("long").unwrap();
+        let operand_ast = ast_unary(tokens, definitions);
+        let type_ = operand_ast.type_.clone();
         Ast::new_single_operation_ast(Operation::Not, not_info, type_, operand_ast)
     } else if tokens.expect_symbol(Symbol::BitNot) {
-        // drop "!" token
-        let not_info = tokens.consume_symbol(Symbol::BitNot);
-        let operand_ast = ast_primary(tokens, definitions);
-        // とりあえず8バイトにしておく
-        let type_ = definitions.get_type("long").unwrap();
-        Ast::new_single_operation_ast(Operation::BitNot, not_info, type_, operand_ast)
+        // drop "~" token
+        let bitnot_info = tokens.consume_symbol(Symbol::BitNot);
+        let operand_ast = ast_unary(tokens, definitions);
+        let type_ = operand_ast.type_.clone();
+        Ast::new_single_operation_ast(Operation::BitNot, bitnot_info, type_, operand_ast)
+    } else if tokens.expect_symbol(Symbol::BitAnd) {
+        // drop "&" token
+        let address_info = tokens.consume_symbol(Symbol::BitAnd);
+        let operand_ast = ast_unary(tokens, definitions);
+        let type_ = Type::new_pointer(operand_ast.type_.clone());
+        Ast::new_single_operation_ast(Operation::Address, address_info, type_, operand_ast)
+    } else if tokens.expect_symbol(Symbol::Mul) {
+        // drop "*" token
+        let deref_info = tokens.consume_symbol(Symbol::Mul);
+        let operand_ast = ast_unary(tokens, definitions);
+        if let Some(deref_type) = &operand_ast.type_.pointer {
+            let type_ = deref_type.deref().clone();
+            Ast::new_single_operation_ast(Operation::Deref, deref_info, type_, operand_ast)
+        } else {
+            output_undereferensable_err(&deref_info);
+        }
     } else {
         ast_primary(tokens, definitions)
     }

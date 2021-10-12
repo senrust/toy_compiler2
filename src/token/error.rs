@@ -51,27 +51,27 @@ fn print_token_error_info(err: TokenError, info: &TokenInfo) {
 pub fn invalid_number_token_err(info: &TokenInfo) -> ! {
     // get invalid token
     let invalidnum_token = get_token(info);
-    print_token_error_info(TokenError::InvalidNumberErr(invalidnum_token), info);
+    print_token_error_info(TokenError::InvalidNumber(invalidnum_token), info);
     exit(-1);
 }
 
 pub fn unexpected_token_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::UnexpectTokenError, info);
+    print_token_error_info(TokenError::UnexpectToken, info);
     exit(-1);
 }
 
 pub fn notenough_token_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::NotEnoughTokenError, info);
+    print_token_error_info(TokenError::NotEnoughToken, info);
     exit(-1);
 }
 
 fn unclosed_token_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::UnClosedError, info);
+    print_token_error_info(TokenError::UnClosed, info);
     exit(-1);
 }
 
 fn unclosed_tokenend_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::UnClosedEndError, info);
+    print_token_error_info(TokenError::ReachEndWithoutClose, info);
     exit(-1);
 }
 
@@ -96,33 +96,33 @@ pub fn output_unexpected_token_err(tokens: &Tokens) -> ! {
 }
 
 pub fn output_undeclared_variable_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::UnDeclaredVariableError, info);
+    print_token_error_info(TokenError::UndeclaredVariable, info);
     exit(-1);
 }
 
 pub fn output_alreadydeclared_variable_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::AlreadyDeclaredVariableError, info);
+    print_token_error_info(TokenError::AlreadyDeclaredVariable, info);
     exit(-1);
 }
 
 pub fn output_undefinedfunction_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::UndefinedFunctionCallError, info);
+    print_token_error_info(TokenError::UndefinedFunctionCall, info);
     exit(-1);
 }
 
 pub fn output_notsamefunction_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::NotSameFunctionError, info);
+    print_token_error_info(TokenError::NotSameFunction, info);
     exit(-1);
 }
 
 pub fn output_alreadyimplementedfunction_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::AlreadyImplementedFunctionError, info);
+    print_token_error_info(TokenError::AlreadyImplementedFunction, info);
     exit(-1);
 }
 
 pub fn output_incorrectarg_err(tokens: &Tokens) -> ! {
     if let Some(err_token) = tokens.get() {
-        print_token_error_info(TokenError::InCorrectArgError, &err_token.info);
+        print_token_error_info(TokenError::InCorrectArgs, &err_token.info);
         exit(-1);
     } else {
         let prev_token = tokens.get_prev(1).unwrap();
@@ -130,12 +130,17 @@ pub fn output_incorrectarg_err(tokens: &Tokens) -> ! {
     }
 }
 
-pub fn output_deefferenttype_err(tokens: &Tokens) -> ! {
+pub fn output_defferenttype_err(tokens: &Tokens) -> ! {
     if let Some(err_token) = tokens.get() {
-        print_token_error_info(TokenError::DefferentTypeError, &err_token.info);
+        print_token_error_info(TokenError::DefferentType, &err_token.info);
         exit(-1);
     } else {
         let prev_token = tokens.get_prev(1).unwrap();
         notenough_token_err(&prev_token.info);
     }
+}
+
+pub fn output_undereferensable_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::Undereferensable, info);
+    exit(-1);
 }

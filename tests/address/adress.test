@@ -1,0 +1,9 @@
+long main() {
+    long a;
+    long* b;
+    long c;
+    b = &a;
+    *b = 10;
+    return a;
+
+}

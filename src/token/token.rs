@@ -127,58 +127,62 @@ impl Token {
 }
 
 pub enum TokenError {
-    UnexpectTokenError,
-    InvalidNumberErr(String),
-    UnClosedError,
-    UnClosedEndError,
-    UnDeclaredVariableError,
-    AlreadyDeclaredVariableError,
-    NotEnoughTokenError,
-    UndefinedFunctionCallError,
-    NotSameFunctionError,
-    AlreadyImplementedFunctionError,
-    InCorrectArgError,
-    DefferentTypeError,
+    UnexpectToken,
+    InvalidNumber(String),
+    UnClosed,
+    ReachEndWithoutClose,
+    UndeclaredVariable,
+    AlreadyDeclaredVariable,
+    NotEnoughToken,
+    UndefinedFunctionCall,
+    NotSameFunction,
+    AlreadyImplementedFunction,
+    InCorrectArgs,
+    DefferentType,
+    Undereferensable,
 }
 
 impl fmt::Display for TokenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TokenError::UnexpectTokenError => {
+            TokenError::UnexpectToken => {
                 write!(f, "unexpected token")
             }
-            TokenError::InvalidNumberErr(str) => {
+            TokenError::InvalidNumber(str) => {
                 write!(f, "{} is invalid number", str)
             }
-            TokenError::UnClosedError => {
+            TokenError::UnClosed => {
                 write!(f, "unclosed")
             }
-            TokenError::UnClosedEndError => {
+            TokenError::ReachEndWithoutClose => {
                 write!(f, "unclosed end")
             }
-            TokenError::UnDeclaredVariableError => {
+            TokenError::UndeclaredVariable => {
                 write!(f, "undeclared variable")
             }
-            TokenError::AlreadyDeclaredVariableError => {
+            TokenError::AlreadyDeclaredVariable => {
                 write!(f, "already declared variable")
             }
-            TokenError::NotEnoughTokenError => {
+            TokenError::NotEnoughToken => {
                 write!(f, "identifiler is nesesarry after this token")
             }
-            TokenError::UndefinedFunctionCallError => {
+            TokenError::UndefinedFunctionCall => {
                 write!(f, "undefined function")
             }
-            TokenError::NotSameFunctionError => {
+            TokenError::NotSameFunction => {
                 write!(f, "not same previous definition")
             }
-            TokenError::AlreadyImplementedFunctionError => {
+            TokenError::AlreadyImplementedFunction => {
                 write!(f, "already implemented function")
             }
-            TokenError::InCorrectArgError => {
+            TokenError::InCorrectArgs => {
                 write!(f, "incorrect arguments")
             }
-            TokenError::DefferentTypeError => {
+            TokenError::DefferentType => {
                 write!(f, "deffrent type")
+            }
+            TokenError::Undereferensable => {
+                write!(f, "undereferensable type")
             }
         }
     }

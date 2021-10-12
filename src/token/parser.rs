@@ -79,7 +79,7 @@ impl RawToken {
 
 pub enum ParserError {
     InvalidIdentifiler(String),
-    UnClosedError,
+    UnClosed,
 }
 
 impl Display for ParserError {
@@ -88,7 +88,7 @@ impl Display for ParserError {
             ParserError::InvalidIdentifiler(identifier) => {
                 write!(f, "{} is invalid identifier", identifier)
             }
-            ParserError::UnClosedError => {
+            ParserError::UnClosed => {
                 write!(f, "not closed")
             }
         }
@@ -418,7 +418,7 @@ pub fn parse_file(filepath: &Path) -> Vec<RawToken> {
                             }
                         }
                         Err(()) => {
-                            exit_parser_error(ParserError::UnClosedError, &parser);
+                            exit_parser_error(ParserError::UnClosed, &parser);
                         }
                     }
                 }
@@ -472,7 +472,7 @@ pub fn parse_file(filepath: &Path) -> Vec<RawToken> {
 
     // ファイル端で未トークン化があればエラーとする
     if parser.state != ParserState::Empty {
-        exit_parser_error(ParserError::UnClosedError, &parser);
+        exit_parser_error(ParserError::UnClosed, &parser);
     }
 
     // トークンが1つもない場合はエラーとする
