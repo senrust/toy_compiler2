@@ -1,0 +1,5 @@
+long main() {
+    long a;
+    a = 17;
+    return a % 10;
+}

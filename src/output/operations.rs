@@ -47,15 +47,19 @@ fn exetute_mul<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 }
 
 fn exetute_div<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    if let AstKind::Operation(Operation::Div) = ast.kind {
+    if let AstKind::Operation(Operation::Div | Operation::Rem) = ast.kind {
         output_ast(ast.right.take().unwrap().as_mut(), buf);
         output_ast(ast.left.take().unwrap().as_mut(), buf);
         write_pop_two_values(buf);
         buf.output("    cqo");
         buf.output("    idiv rdi");
-        buf.output_push("rax");
+        if ast.kind == AstKind::Operation(Operation::Div) {
+            buf.output_push("rax");
+        } else {
+            buf.output_push("rdx");
+        }
     } else {
-        unexpected_ast_err(ast, "operation /");
+        unexpected_ast_err(ast, "operation / or %");
     }
 }
 
@@ -138,7 +142,7 @@ pub fn output_operation_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) 
     match &ast.kind {
         AstKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
         AstKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
-        AstKind::Operation(Operation::Div) => exetute_div(ast, buf),
+        AstKind::Operation(Operation::Div | Operation::Rem) => exetute_div(ast, buf),
         AstKind::Operation(Operation::Eq | Operation::NotEq) => exetute_eq(ast, buf),
         AstKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => {
             exetute_comp(ast, buf)

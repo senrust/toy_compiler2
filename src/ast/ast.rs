@@ -17,6 +17,7 @@ pub enum Operation {
     Sub,
     Mul,
     Div,
+    Rem,
     Eq,     // ==
     NotEq,  // !=
     Gt,     // >
@@ -232,7 +233,7 @@ pub fn ast_variable(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     }
 }
 
-// primary = num | variable | functioncall | "(" add ")"
+// primary = num | variable | functioncall | "(" formula ")"
 pub fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_number() {
         ast_number(tokens, definitions)
@@ -245,7 +246,7 @@ pub fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     } else if tokens.expect_symbol(Symbol::LeftParenthesis) {
         // drop "(" token
         tokens.consume_symbol(Symbol::LeftParenthesis);
-        let add_ast = ast_equality(tokens, definitions);
+        let add_ast = ast_formula(tokens, definitions);
         if tokens.expect_symbol(Symbol::RightParenthesis) {
             // drop ")" token
             tokens.consume_symbol(Symbol::RightParenthesis);

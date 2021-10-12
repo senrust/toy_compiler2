@@ -12,6 +12,7 @@ macro_rules! symbols_without_dot_or_space {
         '+' | '-'
             | '/'
             | '*'
+            | '%'
             | '='
             | '&'
             | '^'

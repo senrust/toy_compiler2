@@ -30,7 +30,7 @@ pub fn ast_unary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     }
 }
 
-// mul = unary | (* unary | / unary)*
+// mul = unary | (* unary | / unary　| % unary)*
 fn ast_mul(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let left_ast = ast_unary(tokens, definitions);
     let mut operation;
@@ -40,6 +40,8 @@ fn ast_mul(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             operation = Operation::Mul;
         } else if tokens.expect_symbol(Symbol::Div) {
             operation = Operation::Div;
+        } else if tokens.expect_symbol(Symbol::Rem) {
+            operation = Operation::Rem;
         } else {
             return mul_ast;
         }
@@ -169,10 +171,15 @@ fn ast_bit_operation(
     }
 }
 
+// ast_formula = bit_operation
+pub fn ast_formula(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    ast_bit_operation(Symbol::BitOr, tokens, definitions)
+}
+
 // assign = bit_operation ("=" assign)*
 // 左辺値が左辺値となりうるかの確認はコンパイル側でおこなう
 pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    let assignee_ast = ast_bit_operation(Symbol::BitOr, tokens, definitions);
+    let assignee_ast = ast_formula(tokens, definitions);
     let mut assign_ast = assignee_ast;
     loop {
         if !tokens.expect_symbol(Symbol::Assign) {

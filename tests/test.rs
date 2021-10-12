@@ -155,3 +155,8 @@ fn funccallargs_test() {
 fn bitoperation_test() {
     do_test("bitoperation");
 }
+
+#[test]
+fn rem_test() {
+    do_test("rem");
+}
