@@ -5,7 +5,7 @@ use crate::definition::symbols::*;
 use crate::definition::types::evaluate_binary_operation_type;
 use crate::token::token::*;
 
-// unary = primary |  + primary |  - primary | ! unary
+// unary = primary |  + primary |  - primary | ! primary
 pub fn ast_unary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_symbol(Symbol::Add) {
         // drop "+" token
@@ -21,10 +21,17 @@ pub fn ast_unary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     } else if tokens.expect_symbol(Symbol::Not) {
         // drop "!" token
         let not_info = tokens.consume_symbol(Symbol::Not);
-        let operand_ast = ast_unary(tokens, definitions);
+        let operand_ast = ast_primary(tokens, definitions);
         // とりあえず8バイトにしておく
         let type_ = definitions.get_type("long").unwrap();
         Ast::new_single_operation_ast(Operation::Not, not_info, type_, operand_ast)
+    } else if tokens.expect_symbol(Symbol::BitNot) {
+        // drop "!" token
+        let not_info = tokens.consume_symbol(Symbol::BitNot);
+        let operand_ast = ast_primary(tokens, definitions);
+        // とりあえず8バイトにしておく
+        let type_ = definitions.get_type("long").unwrap();
+        Ast::new_single_operation_ast(Operation::BitNot, not_info, type_, operand_ast)
     } else {
         ast_primary(tokens, definitions)
     }

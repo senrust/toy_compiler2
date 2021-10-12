@@ -112,6 +112,15 @@ fn exetute_not<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     write_value_compararison(buf, "sete", 0);
 }
 
+fn exetute_bitnot<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    let instruction = format!("    not rax");
+    output_ast(ast.operand.take().unwrap().as_mut(), buf);
+    buf.output_pop("rax");
+    buf.output(&instruction);
+    buf.output_push("rax");
+}
+
+
 fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     // 左辺値が被代入可能か確認
     let left_ast = ast.left.take().unwrap();
@@ -235,6 +244,7 @@ pub fn output_operation_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) 
         AstKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
         AstKind::Operation(Operation::BitAnd | Operation::BitOr | Operation::BitXor) => 
             exetute_bit_operation(ast, buf),
+        AstKind::Operation(Operation::BitNot) => exetute_bitnot(ast, buf),
         AstKind::Operation(Operation::And) => exetute_logical_and(ast, buf),
         AstKind::Operation(Operation::Or) =>  exetute_logical_or(ast, buf),
         _ => unsupported_ast_err(ast),

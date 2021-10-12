@@ -29,6 +29,7 @@ pub enum Operation {
     BitAnd, // &
     BitOr,  // |
     BitXor, // ^
+    BitNot, // ~
     And,    // &&
     Or,     // ||
 }
