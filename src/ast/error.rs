@@ -6,9 +6,9 @@ use crate::SOURCE_TXT;
 
 pub enum AstError {
     InValidDirection(String),
-    UnExpectedAstKind(AstKind, String),
-    UnSupportedAstKind(AstKind),
-    UnAssignableAstKind,
+    UnExpectedAs(AstKind, String),
+    UnSupportedAst(AstKind),
+    UnAssignableAst,
 }
 
 impl fmt::Display for AstError {
@@ -17,17 +17,17 @@ impl fmt::Display for AstError {
             AstError::InValidDirection(direction) => {
                 write!(f, "can not use {} here", direction)
             }
-            AstError::UnExpectedAstKind(ast_type, expected_type) => {
+            AstError::UnExpectedAs(ast_type, expected_type) => {
                 write!(
                     f,
                     "unexpected ast kind: {:?}, expexcted type: {}",
                     ast_type, expected_type
                 )
             }
-            AstError::UnSupportedAstKind(ast_type) => {
+            AstError::UnSupportedAst(ast_type) => {
                 write!(f, "unsupported ast kind: {:?}", ast_type,)
             }
-            AstError::UnAssignableAstKind => {
+            AstError::UnAssignableAst => {
                 write!(f, "this tokein cant not be assigned")
             }
         }
@@ -62,17 +62,17 @@ pub fn invalid_direction_err(ast: &Ast, direction: &str) -> ! {
 pub fn unexpected_ast_err(ast: &Ast, expected_kind: &str) -> ! {
     print_ast_error_info(
         ast,
-        AstError::UnExpectedAstKind(ast.kind.clone(), expected_kind.to_string()),
+        AstError::UnExpectedAs(ast.kind.clone(), expected_kind.to_string()),
     );
     exit(-1);
 }
 
 pub fn unsupported_ast_err(ast: &Ast) -> ! {
-    print_ast_error_info(ast, AstError::UnSupportedAstKind(ast.kind.clone()));
+    print_ast_error_info(ast, AstError::UnSupportedAst(ast.kind.clone()));
     exit(-1);
 }
 
 pub fn unassignable_ast_err(ast: &Ast) -> ! {
-    print_ast_error_info(ast, AstError::UnAssignableAstKind);
+    print_ast_error_info(ast, AstError::UnAssignableAst);
     exit(-1);
 }

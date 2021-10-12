@@ -113,10 +113,10 @@ fn exetute_not<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 }
 
 fn exetute_bitnot<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    let instruction = format!("    not rax");
+    let instruction = "    not rax";
     output_ast(ast.operand.take().unwrap().as_mut(), buf);
     buf.output_pop("rax");
-    buf.output(&instruction);
+    buf.output(instruction);
     buf.output_push("rax");
 }
 
@@ -158,19 +158,19 @@ fn exetute_logical_and<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let jump_end = format!("    jmp Label{}", false_label_index);
     buf.label_index += 2;
 
-    let comp_zero = format!("    cmp rax, 0");
+    let comp_zero = "    cmp rax, 0";
     // 左側の値を計算
     output_ast(ast.left.take().unwrap().as_mut(), buf);
     buf.output_pop("rax");
     // 0と比較
-    buf.output(&comp_zero);
+    buf.output(comp_zero);
     // 0ならばFalse時の処理を行う
     buf.output(&jump_false);
     // 右側の値を計算
     output_ast(ast.right.take().unwrap().as_mut(), buf);
     buf.output_pop("rax");
     // 0と比較
-    buf.output(&comp_zero);
+    buf.output(comp_zero);
     // 0ならばFalse時の処理を行う
     buf.output(&jump_false);
 
@@ -199,19 +199,19 @@ fn exetute_logical_or<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let jump_end = format!("    jmp Label{}", false_label_index);
     buf.label_index += 3;
 
-    let comp_zero = format!("    cmp rax, 0");
+    let comp_zero = "    cmp rax, 0";
     // 左側の値を計算
     output_ast(ast.left.take().unwrap().as_mut(), buf);
     buf.output_pop("rax");
     // 0と比較
-    buf.output(&comp_zero);
+    buf.output(comp_zero);
     // 1ならば(0でないならば)True時の処理を行う
     buf.output(&jump_true);
     // 右側の値を計算
     output_ast(ast.right.take().unwrap().as_mut(), buf);
     buf.output_pop("rax");
     // 0と比較
-    buf.output(&comp_zero);
+    buf.output(comp_zero);
     // 0ならばFalse時の処理に飛ぶ
     // 1のときはそのままtrueに行く
     buf.output(&jump_false);

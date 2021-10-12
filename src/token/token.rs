@@ -261,17 +261,6 @@ impl Tokens {
         false
     }
 
-    pub fn expect_symbols(&self, symbols: &[Symbol]) -> bool {
-        for symbol in symbols {
-            if let Some(token) = self.vec.get(self.cur) {
-                if token.expect_symbol(symbol) {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     pub fn consume_symbol(&mut self, symbol: Symbol) -> TokenInfo {
         if let Some(token) = self.vec.get(self.cur) {
             if token.expect_symbol(&symbol) {

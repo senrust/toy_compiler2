@@ -176,7 +176,7 @@ fn ast_function_args(
 pub fn ast_functioncall(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let (funcname, info) = tokens.consume_identifier();
     if let Some(type_) = definitions.get_type(&funcname) {
-        let func = type_.function.as_ref().unwrap();
+        let func = definitions.get_function(&funcname).unwrap();
         // 返り値の型を関数の型とする
         let ret_type;
         if let Some(ret) = &func.ret {
