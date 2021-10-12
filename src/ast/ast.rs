@@ -32,8 +32,6 @@ pub enum Operation {
     BitNot, // ~
     And,    // &&
     Or,     // ||
-    Address,
-    Deref,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -53,6 +51,8 @@ pub enum AstKind {
     Operation(Operation),
     Control(Control),
     Variable(Variable),
+    Address,
+    Deref,
     ImmidiateInterger(Number),
 }
 
@@ -92,6 +92,34 @@ impl Ast {
             left: None,
             right: None,
             operand: None,
+            exprs: None,
+            context: None,
+            other: None,
+        }
+    }
+
+    pub fn new_address_ast(info: TokenInfo, type_: Type, operand: Ast) -> Ast {
+        Ast {
+            kind: AstKind::Address,
+            info,
+            type_,
+            left: None,
+            right: None,
+            operand: Some(Box::new(operand)),
+            exprs: None,
+            context: None,
+            other: None,
+        }
+    }
+
+    pub fn new_deref_ast(info: TokenInfo, type_: Type, operand: Ast) -> Ast {
+        Ast {
+            kind: AstKind::Deref,
+            info,
+            type_,
+            left: None,
+            right: None,
+            operand: Some(Box::new(operand)),
             exprs: None,
             context: None,
             other: None,

@@ -165,3 +165,8 @@ fn rem_test() {
 fn logical_test() {
     do_test("logical");
 }
+
+#[test]
+fn address_test() {
+    do_test("address");
+}

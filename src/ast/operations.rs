@@ -37,15 +37,23 @@ pub fn ast_unary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         // drop "&" token
         let address_info = tokens.consume_symbol(Symbol::BitAnd);
         let operand_ast = ast_unary(tokens, definitions);
-        let type_ = Type::new_pointer(operand_ast.type_.clone());
-        Ast::new_single_operation_ast(Operation::Address, address_info, type_, operand_ast)
+        let type_;
+        // 変数とプリミティブ型のみアドレスにすることができる
+        if let AstKind::Variable(_) = &operand_ast.kind {
+            type_ = Type::new_pointer(operand_ast.type_.clone());
+        } else if operand_ast.type_.primitive.is_some() {
+            type_ = Type::new_pointer(definitions.get_type("void").unwrap());
+        } else {
+            output_unaddressable_err(&address_info);
+        }
+        Ast::new_address_ast(address_info, type_, operand_ast)
     } else if tokens.expect_symbol(Symbol::Mul) {
         // drop "*" token
         let deref_info = tokens.consume_symbol(Symbol::Mul);
         let operand_ast = ast_unary(tokens, definitions);
         if let Some(deref_type) = &operand_ast.type_.pointer {
             let type_ = deref_type.deref().clone();
-            Ast::new_single_operation_ast(Operation::Deref, deref_info, type_, operand_ast)
+            Ast::new_deref_ast(deref_info, type_, operand_ast)
         } else {
             output_undereferensable_err(&deref_info);
         }

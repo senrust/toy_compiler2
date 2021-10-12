@@ -144,3 +144,8 @@ pub fn output_undereferensable_err(info: &TokenInfo) -> ! {
     print_token_error_info(TokenError::Undereferensable, info);
     exit(-1);
 }
+
+pub fn output_unaddressable_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::Unaddressable, info);
+    exit(-1);
+}

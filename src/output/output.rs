@@ -158,6 +158,49 @@ pub fn push_variable_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
     }
 }
 
+// ポインターが指すアドレスを求める
+pub fn push_deref_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
+    let mut deref_ast = ast;
+    let mut deref_count = 0;
+    while let AstKind::Deref = &deref_ast.kind {
+        deref_ast = deref_ast.operand.as_ref().unwrap();
+        deref_count += 1;
+    }
+    let val_ast = deref_ast;
+    push_variable_value(val_ast, buf);
+    while deref_count != 0 {
+        buf.output_pop("rax");
+        buf.output("    mov rax, [rax]");
+        buf.output_push("rax");
+        deref_count -= 1;
+    }
+}
+
+// ポインターが指す値を求める
+// ポインタが指すアドレスの値を取る
+pub fn push_deref_value<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
+    push_deref_address(ast, buf);
+    buf.output_pop("rax");
+    buf.output("    mov rax, [rax]");
+    buf.output_push("rax");
+}
+
+// アドレスを取得する
+// アドレスを取得できるのは変数型と, プリミティブ型を返す演算のみ
+// AST作成時にチェック済み
+pub fn push_address<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    let address_ast = ast.operand.take().unwrap();
+    match &address_ast.kind {
+        AstKind::Address => {
+            unaddressable_ast_err(&address_ast);
+        }
+        AstKind::Variable(_val) => {
+            push_variable_address(&address_ast, buf);
+        }
+        _ => output_ast(ast, buf),
+    }
+}
+
 #[inline]
 pub fn write_pop_one_value<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output_pop("rax");
@@ -203,6 +246,8 @@ pub fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         AstKind::Control(_) => output_control_ast(ast, buf),
         AstKind::ImmidiateInterger(_num) => push_number(ast, buf),
         AstKind::Variable(_val) => push_variable_value(ast, buf),
+        AstKind::Address => push_address(ast, buf),
+        AstKind::Deref => push_deref_value(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
         AstKind::FuncionCall(_func, _type) => execute_funccall(ast, buf),
         _ => unsupported_ast_err(ast),

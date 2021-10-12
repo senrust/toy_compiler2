@@ -123,14 +123,20 @@ fn exetute_bitnot<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     // 左辺値が被代入可能か確認
     let left_ast = ast.left.take().unwrap();
-    if let AstKind::Variable(_val) = &left_ast.kind {
-        // 代入は右から評価する
-        output_ast(ast.right.take().unwrap().as_mut(), buf);
-        push_variable_address(left_ast.as_ref(), buf);
-        write_assignment(buf);
-    } else {
-        unassignable_ast_err(ast);
+    match &left_ast.kind {
+        AstKind::Variable(_val) => {
+            // 代入は右から評価する
+            output_ast(ast.right.take().unwrap().as_mut(), buf);
+            push_variable_address(left_ast.as_ref(), buf);
+        }
+        AstKind::Deref => {
+            output_ast(ast.right.take().unwrap().as_mut(), buf);
+            push_deref_address(left_ast.as_ref(), buf);
+        }
+        _ => unassignable_ast_err(ast),
     }
+
+    write_assignment(buf);
 }
 
 fn exetute_bit_operation<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {

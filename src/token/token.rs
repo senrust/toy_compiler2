@@ -140,6 +140,7 @@ pub enum TokenError {
     InCorrectArgs,
     DefferentType,
     Undereferensable,
+    Unaddressable,
 }
 
 impl fmt::Display for TokenError {
@@ -183,6 +184,9 @@ impl fmt::Display for TokenError {
             }
             TokenError::Undereferensable => {
                 write!(f, "undereferensable type")
+            }
+            TokenError::Unaddressable => {
+                write!(f, "can not get address")
             }
         }
     }

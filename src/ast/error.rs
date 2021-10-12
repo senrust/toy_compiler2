@@ -9,6 +9,7 @@ pub enum AstError {
     UnExpectedAs(AstKind, String),
     UnSupportedAst(AstKind),
     UnAssignableAst,
+    UnAddressable,
 }
 
 impl fmt::Display for AstError {
@@ -29,6 +30,9 @@ impl fmt::Display for AstError {
             }
             AstError::UnAssignableAst => {
                 write!(f, "this tokein cant not be assigned")
+            }
+            AstError::UnAddressable => {
+                write!(f, "can not take address to address")
             }
         }
     }
@@ -74,5 +78,10 @@ pub fn unsupported_ast_err(ast: &Ast) -> ! {
 
 pub fn unassignable_ast_err(ast: &Ast) -> ! {
     print_ast_error_info(ast, AstError::UnAssignableAst);
+    exit(-1);
+}
+
+pub fn unaddressable_ast_err(ast: &Ast) -> ! {
+    print_ast_error_info(ast, AstError::UnAddressable);
     exit(-1);
 }
