@@ -1,0 +1,17 @@
+long main() {
+    long a;
+    long b;
+    long c;
+    a = 10;
+    b = 2;
+    c = 0;
+    if ( a - 5 && b - 2) {
+        c = c + 5;
+    }
+
+    if (a - 10 || b + 1) {
+        c = c + 10;
+    }
+
+    return c;
+}

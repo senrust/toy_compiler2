@@ -26,9 +26,11 @@ pub enum Operation {
     Le,     // <=
     Not,    // !
     Assign, // =
-    BitAnd,
-    BitOr,
-    BitXor,
+    BitAnd, // &
+    BitOr,  // |
+    BitXor, // ^
+    And,    // &&
+    Or,     // ||
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -160,3 +160,8 @@ fn bitoperation_test() {
 fn rem_test() {
     do_test("rem");
 }
+
+#[test]
+fn logical_test() {
+    do_test("logical");
+}

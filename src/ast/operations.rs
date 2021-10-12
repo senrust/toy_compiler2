@@ -171,9 +171,41 @@ fn ast_bit_operation(
     }
 }
 
-// ast_formula = bit_operation
+// logical = logical_or
+// logical_or  = logical_and "||" logical_and
+// logical_and = bit_operation "&&" bit_operation
+fn ast_logical(logical_symbol: Symbol, tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    let (left_ast, logical_op) = match &logical_symbol {
+        Symbol::Or => (ast_logical(Symbol::And, tokens, definitions), Operation::Or),
+        Symbol::And => (
+            ast_bit_operation(Symbol::BitOr, tokens, definitions),
+            Operation::And,
+        ),
+        _ => unreachable!(),
+    };
+
+    let mut logical_op_ast = left_ast;
+    loop {
+        if !tokens.expect_symbol(logical_symbol) {
+            return logical_op_ast;
+        }
+
+        let ast_info = tokens.consume();
+        let right_ast = match &logical_symbol {
+            Symbol::Or => ast_logical(Symbol::And, tokens, definitions),
+            Symbol::And => ast_bit_operation(Symbol::BitOr, tokens, definitions),
+            _ => unreachable!(),
+        };
+        // とりあえずビット演算の型は8バイトにしておく
+        let type_ = definitions.get_type("long").unwrap();
+        logical_op_ast =
+            Ast::new_binary_operation_ast(logical_op, ast_info, type_, logical_op_ast, right_ast);
+    }
+}
+
+// ast_formula = logical
 pub fn ast_formula(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    ast_bit_operation(Symbol::BitOr, tokens, definitions)
+    ast_logical(Symbol::Or, tokens, definitions)
 }
 
 // assign = bit_operation ("=" assign)*

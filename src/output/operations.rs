@@ -138,20 +138,105 @@ fn exetute_bit_operation<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     write_operation(buf, bit_operation);
 }
 
+fn exetute_logical_and<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    // andのネストがある場合(A && B && C ), Aが0の時点でB, Cの比較をせずにネストを抜けることが可能.
+    // これを行うにはAndのネスト判定とジャンプ先ラベルを保持している必要がある.
+    // これを行うには状態管理が必要だが, 実装の手間が増えるので今回は逐次比較を行う
+    let false_label_index = buf.label_index;
+    let end_label_index = buf.label_index + 2;
+    let false_label = format!("Label{}:", false_label_index);
+    let end_label = format!("Label{}:", end_label_index);
+    let jump_false =  format!("    je Label{}", false_label_index);
+    let jump_end =  format!("    jmp Label{}", false_label_index);
+    buf.label_index += 2;
+
+
+    let comp_zero = format!("    cmp rax, 0");
+    // 左側の値を計算
+    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    buf.output_pop("rax");
+    // 0と比較
+    buf.output(&comp_zero);
+    // 0ならばFalse時の処理を行う
+    buf.output(&jump_false);
+    // 右側の値を計算
+    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    buf.output_pop("rax");
+    // 0と比較
+    buf.output(&comp_zero);
+    // 0ならばFalse時の処理を行う
+    buf.output(&jump_false);
+
+    // True時の処理を記載
+    buf.output_push_num(1);
+    // Endへジャンプ
+    buf.output(&jump_end);
+
+    // Falseラベルを貼り, False時の処理を記載
+    buf.output(&false_label);
+    buf.output_push_num(0);
+    buf.output(&end_label);
+} 
+
+fn exetute_logical_or<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    // ORがネストされた状態((A || B || C)内のどれかで1になったらネストを抜けた先までジャンプできる
+    // これにより高速化できるが, ジャンプ先管理の手間が増えるので今回はネストごとに逐次比較する
+    let true_label_index = buf.label_index;
+    let false_label_index = buf.label_index + 1;
+    let end_label_index = buf.label_index + 2;
+    let true_label = format!("Label{}:", true_label_index);
+    let false_label = format!("Label{}:", false_label_index);
+    let end_label = format!("Label{}:", end_label_index);
+    let jump_true =  format!("    jne Label{}", true_label_index);
+    let jump_false =  format!("    je Label{}", false_label_index);
+    let jump_end =  format!("    jmp Label{}", false_label_index);
+    buf.label_index += 3;
+
+
+    let comp_zero = format!("    cmp rax, 0");
+    // 左側の値を計算
+    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    buf.output_pop("rax");
+    // 0と比較
+    buf.output(&comp_zero);
+    // 1ならば(0でないならば)True時の処理を行う
+    buf.output(&jump_true);
+    // 右側の値を計算
+    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    buf.output_pop("rax");
+    // 0と比較
+    buf.output(&comp_zero);
+    // 0ならばFalse時の処理に飛ぶ
+    // 1のときはそのままtrueに行く
+    buf.output(&jump_false);
+
+    // True時の処理
+    buf.output(&true_label);
+    buf.output_push_num(1);
+    // End文へ飛ぶ
+    buf.output(&jump_end);
+
+    // False時の処理
+    buf.output(&false_label);
+    buf.output_push_num(0);
+    // Endラベルを挿入
+    buf.output(&end_label);
+}
+
 pub fn output_operation_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
         AstKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
         AstKind::Operation(Operation::Div | Operation::Rem) => exetute_div(ast, buf),
         AstKind::Operation(Operation::Eq | Operation::NotEq) => exetute_eq(ast, buf),
-        AstKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => {
-            exetute_comp(ast, buf)
-        }
+        AstKind::Operation(Operation::Gt | Operation::Lt | Operation::Ge | Operation::Le) => 
+            exetute_comp(ast, buf),
         AstKind::Operation(Operation::Not) => exetute_not(ast, buf),
         AstKind::Operation(Operation::Assign) => exetute_assign(ast, buf),
-        AstKind::Operation(Operation::BitAnd | Operation::BitOr | Operation::BitXor) => {
-            exetute_bit_operation(ast, buf)
-        }
+        AstKind::Operation(Operation::BitAnd | Operation::BitOr | Operation::BitXor) => 
+            exetute_bit_operation(ast, buf),
+        AstKind::Operation(Operation::And) => exetute_logical_and(ast, buf),
+        AstKind::Operation(Operation::Or) =>  exetute_logical_or(ast, buf),
         _ => unsupported_ast_err(ast),
     }
 }

@@ -78,7 +78,7 @@ impl<T: Write> OutputBuffer<T> {
     }
 
     #[inline]
-    fn output_push_num(&mut self, num: u64) {
+    pub fn output_push_num(&mut self, num: u64) {
         // 即値は4ビット
         writeln!(self.buf, "    push {}", num).unwrap();
         self.stack_alignment = (self.stack_alignment + 4) / 16;
