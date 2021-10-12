@@ -121,8 +121,8 @@ pub fn execute_funccall<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
                 output_ast(arg_ast, buf);
             }
             // set args in register
-            for i in 0..arg_count {
-                buf.output_pop(FUNC_ARG_REGISTERS[i]);
+            for register in FUNC_ARG_REGISTERS.iter().take(arg_count) {
+                buf.output_pop(*register);
             }
         }
         buf.output(&format!("    call {}", fucname));
@@ -132,5 +132,16 @@ pub fn execute_funccall<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         }
     } else {
         invalid_direction_err(ast, "call function");
+    }
+}
+
+pub fn output_control_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+    match &ast.kind {
+        AstKind::Control(Control::Return) => execute_return(ast, buf),
+        AstKind::Control(Control::If) => execute_if(ast, buf),
+        AstKind::Control(Control::For) => execute_for(ast, buf),
+        AstKind::Control(Control::While) => execute_while(ast, buf),
+        AstKind::Control(Control::Break) => execute_break(ast, buf),
+        _ => unsupported_ast_err(ast),
     }
 }

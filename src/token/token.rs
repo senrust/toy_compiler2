@@ -15,7 +15,7 @@ pub enum TokenKind {
     RawString(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct TokenInfo {
     pub line: usize,
     pub pos: usize,
@@ -233,7 +233,7 @@ impl Tokens {
     pub fn consume(&mut self) -> TokenInfo {
         if let Some(token) = self.vec.get(self.cur) {
             self.cur += 1;
-            token.info.clone()
+            token.info
         } else {
             output_unexpected_token_err(self)
         }
@@ -272,7 +272,7 @@ impl Tokens {
         if let Some(token) = self.vec.get(self.cur) {
             if token.expect_symbol(&symbol) {
                 self.cur += 1;
-                token.info.clone()
+                token.info
             } else {
                 output_unexpected_token_err(self)
             }
@@ -293,7 +293,7 @@ impl Tokens {
         if let Some(token) = self.vec.get(self.cur) {
             if let Ok(num) = token.get_interger() {
                 self.cur += 1;
-                (num, token.info.clone())
+                (num, token.info)
             } else {
                 invalid_number_token_err(&token.info);
             }
@@ -314,7 +314,7 @@ impl Tokens {
         if let Some(token) = self.vec.get(self.cur) {
             if let Ok(ident) = token.get_identifier() {
                 self.cur += 1;
-                (ident.clone(), token.info.clone())
+                (ident.clone(), token.info)
             } else {
                 output_unexpected_token_err(self)
             }
@@ -335,7 +335,7 @@ impl Tokens {
         if let Some(token) = self.vec.get(self.cur) {
             if token.expect_reserved(reserved) {
                 self.cur += 1;
-                token.info.clone()
+                token.info
             } else {
                 output_unexpected_token_err(self)
             }

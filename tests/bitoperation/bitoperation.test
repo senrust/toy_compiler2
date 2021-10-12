@@ -1,0 +1,10 @@
+long main() {
+    long a;
+    long b;
+
+    a = 85;
+    b = 32;
+
+    return 5 & a | 34 & 7 ^ b | 23;
+
+}

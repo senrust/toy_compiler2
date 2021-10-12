@@ -150,3 +150,8 @@ fn funccall_test() {
 fn funccallargs_test() {
     do_test("funccall_args");
 }
+
+#[test]
+fn bitoperation_test() {
+    do_test("bitoperation");
+}

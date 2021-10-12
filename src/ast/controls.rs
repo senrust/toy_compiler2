@@ -1,4 +1,5 @@
 use crate::ast::ast::*;
+use crate::ast::operations::*;
 use crate::definition::definitions::Definitions;
 use crate::definition::reservedwords::*;
 use crate::definition::symbols::*;
@@ -160,14 +161,14 @@ fn ast_function_args(
             output_incorrectarg_err(tokens);
         }
         tokens.consume(); // consume ")"
-        return Some(args_ast);
+        Some(args_ast)
     } else {
         tokens.consume_symbol(Symbol::LeftParenthesis); // consume "("
         if !tokens.expect_symbol(Symbol::RightParenthesis) {
             output_incorrectarg_err(tokens);
         }
         tokens.consume(); // consume ")"
-        return None;
+        None
     }
 }
 
