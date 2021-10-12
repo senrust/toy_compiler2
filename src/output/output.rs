@@ -149,9 +149,8 @@ pub fn push_variable_value<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
 pub fn push_variable_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
     // 現在はローカル変数のみ対応
     if let AstKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
-        buf.output("    mov rax, rbp");
-        let local_offset = format!("    sub rax, {}", local_val.frame_offset);
-        buf.output(&local_offset);
+        let lea_instruction = format!("    lea rax, [rbp - {}]", local_val.frame_offset);
+        buf.output(&lea_instruction);
         buf.output_push("rax");
     } else {
         unexpected_ast_err(ast, "local variable");
@@ -167,7 +166,7 @@ pub fn push_deref_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
         deref_count += 1;
     }
     let val_ast = deref_ast;
-    push_variable_value(val_ast, buf);
+    push_variable_address(val_ast, buf);
     while deref_count != 0 {
         buf.output_pop("rax");
         buf.output("    mov rax, [rax]");

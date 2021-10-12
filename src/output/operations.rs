@@ -161,7 +161,7 @@ fn exetute_logical_and<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let false_label = format!("Label{}:", false_label_index);
     let end_label = format!("Label{}:", end_label_index);
     let jump_false = format!("    je Label{}", false_label_index);
-    let jump_end = format!("    jmp Label{}", false_label_index);
+    let jump_end = format!("    jmp Label{}", end_label_index);
     buf.label_index += 2;
 
     let comp_zero = "    cmp rax, 0";
@@ -202,7 +202,7 @@ fn exetute_logical_or<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let end_label = format!("Label{}:", end_label_index);
     let jump_true = format!("    jne Label{}", true_label_index);
     let jump_false = format!("    je Label{}", false_label_index);
-    let jump_end = format!("    jmp Label{}", false_label_index);
+    let jump_end = format!("    jmp Label{}", end_label_index);
     buf.label_index += 3;
 
     let comp_zero = "    cmp rax, 0";
