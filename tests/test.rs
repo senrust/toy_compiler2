@@ -170,3 +170,9 @@ fn logical_test() {
 fn address_test() {
     do_test("address");
 }
+
+#[test]
+fn sizeof_test() {
+    do_test("sizeof");
+}
+

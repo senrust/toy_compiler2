@@ -1,5 +1,4 @@
 use super::functions::Function;
-use crate::ast::ast::Ast;
 use crate::definition::number::Number;
 use std::{collections::HashMap, marker::PhantomData, rc::Rc};
 
@@ -234,8 +233,4 @@ impl TypesDefinitions {
             Ok(self.get_type(name).unwrap())
         }
     }
-}
-
-pub fn evaluate_binary_operation_type(left: &Ast, _right: &Ast) -> Type {
-    left.type_.clone()
 }
