@@ -32,8 +32,8 @@ fn write_value_compararison<T: Write>(buf: &mut OutputBuffer<T>, comp_type: &str
 
 fn write_assignment<T: Write>(buf: &mut OutputBuffer<T>) {
     write_pop_two_values(buf);
-    buf.output("    mov [rax], rdi");
-    buf.output_push("rdi");
+    buf.output("    mov [rdi], rax");
+    buf.output_push("rax");
 }
 
 fn exetute_mul<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
@@ -125,17 +125,17 @@ fn exetute_assign<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let left_ast = ast.left.take().unwrap();
     match &left_ast.kind {
         AstKind::Variable(_val) => {
-            // 代入は右から評価する
-            output_ast(*ast.right.take().unwrap(), buf);
             push_variable_address(*left_ast, buf);
         }
         AstKind::Deref => {
-            output_ast(*ast.right.take().unwrap(), buf);
-            push_deref_address(*left_ast, buf);
+            push_pointer_address(*left_ast, buf);
+        }
+        AstKind::Index => {
+            push_array_elem_address(*left_ast, buf);
         }
         _ => unassignable_ast_err(&ast),
     }
-
+    output_ast(*ast.right.take().unwrap(), buf);
     write_assignment(buf);
 }
 

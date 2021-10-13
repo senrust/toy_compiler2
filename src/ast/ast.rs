@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::ast::controls::*;
 use crate::ast::declaration::*;
 use crate::ast::operations::*;
@@ -53,6 +55,7 @@ pub enum AstKind {
     Variable(Variable),
     Address,
     Deref,
+    Index,
     ImmidiateInterger(Number),
 }
 
@@ -120,6 +123,20 @@ impl Ast {
             left: None,
             right: None,
             operand: Some(Box::new(operand)),
+            exprs: None,
+            context: None,
+            other: None,
+        }
+    }
+
+    pub fn new_index_ast(info: TokenInfo, type_: Type, val: Ast, index: Ast) -> Ast {
+        Ast {
+            kind: AstKind::Index,
+            info,
+            type_,
+            left: Some(Box::new(val)),
+            right: Some(Box::new(index)),
+            operand: None,
             exprs: None,
             context: None,
             other: None,
@@ -266,13 +283,53 @@ pub fn ast_variable(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     }
 }
 
-// primary = num | variable | functioncall | "(" formula ")"
+fn ast_index(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    tokens.consume_symbol(Symbol::LeftSquareBracket);
+    let index_ast = ast_formula(tokens, definitions);
+    if index_ast.type_.is_integer_type() {
+        // ここでlong型の値にする必要がある
+        tokens.consume_symbol(Symbol::RightSquareBracket);
+        index_ast
+    } else {
+        output_unindexiable_err(&index_ast.info)
+    }
+}
+
+// 配列アクセス
+pub fn ast_array_access(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    let val_ast = ast_variable(tokens, definitions);
+    if val_ast.type_.is_array() {
+        let (_array_len, index_type) = val_ast.type_.array.as_ref().unwrap();
+        let index_type = index_type.deref().clone();
+        let index_ast = ast_index(tokens, definitions);
+        let mut array_access_ast = Ast::new_index_ast(val_ast.info, index_type, val_ast, index_ast);
+        // 2次元配列のindexingをできるようにする
+        while tokens.expect_symbol(Symbol::LeftSquareBracket) {
+            let (_array_len, index_type) = array_access_ast.type_.array.as_ref().unwrap();
+            let index_type = index_type.deref().clone();
+            let index_ast = ast_index(tokens, definitions);
+            array_access_ast = Ast::new_index_ast(
+                array_access_ast.info,
+                index_type,
+                array_access_ast,
+                index_ast,
+            );
+        }
+        array_access_ast
+    } else {
+        output_unindexiable_err(&val_ast.info);
+    }
+}
+
+// primary = num | variable | functioncall | "(" formula ")" | variable "[" formula )"]"
 pub fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_number() {
         ast_number(tokens, definitions)
     } else if tokens.expect_identifier() {
         if tokens.expect_next_symbol(Symbol::LeftParenthesis, 1) {
             ast_functioncall(tokens, definitions)
+        } else if tokens.expect_next_symbol(Symbol::LeftSquareBracket, 1) {
+            ast_array_access(tokens, definitions)
         } else {
             ast_variable(tokens, definitions)
         }
@@ -391,22 +448,11 @@ fn get_func_args(
     // consume "("
     tokens.consume_symbol(Symbol::LeftParenthesis);
     while !tokens.expect_symbol(Symbol::RightParenthesis) {
-        let arg_type = cousume_type_token(tokens, definitions);
-        let arg_name: String;
-        let arg_tokeninfo: TokenInfo;
-        // 変数名でない
-        if !tokens.expect_identifier() {
-            // 関数実装の場合は変数を指定しなければならない
-            // 関数宣言は使用しないので問題ない
-            if !is_func_declaration {
-                output_unexpected_token_err(tokens);
-            }
-            arg_name = "".to_string();
-            arg_tokeninfo = tokens.get_prev(1).unwrap().info;
-        } else {
-            let arg = tokens.consume_identifier();
-            arg_name = arg.0;
-            arg_tokeninfo = arg.1;
+        let (arg_type, arg_name, arg_tokeninfo) = cousume_type_token(tokens, definitions);
+
+        // 変数名なしかつ関数宣言でない
+        if arg_name.is_empty() && !is_func_declaration {
+            output_unexpected_token_err(tokens);
         }
 
         args_type.push(arg_type);
@@ -525,8 +571,7 @@ fn ast_function(
 
 // グローバル変数定義, 関数宣言, 関数実装を行う
 fn ast_global(tokens: &mut Tokens, definitions: &mut Definitions) -> Option<Ast> {
-    let type_ = cousume_type_token(tokens, definitions);
-    let (name, info) = tokens.consume_identifier();
+    let (type_, name, info) = cousume_type_token(tokens, definitions);
     if tokens.expect_symbol(Symbol::LeftParenthesis) {
         ast_function(name, info, type_, tokens, definitions)
     } else {

@@ -4,6 +4,15 @@ pub enum Number {
     F64(f64),
 }
 
+impl Number {
+    pub fn get_usize_value(&self) -> Result<usize, ()> {
+        match self {
+            Number::U64(num) => Ok(*num as usize),
+            Number::F64(_float) => Err(()),
+        }
+    }
+}
+
 pub fn string_to_number(string: &str) -> Result<Number, ()> {
     let mut ishex = false;
     let mut isdouble = false;

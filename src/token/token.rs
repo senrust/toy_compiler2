@@ -139,8 +139,10 @@ pub enum TokenError {
     AlreadyImplementedFunction,
     InCorrectArgs,
     DefferentType,
-    Undereferensable,
+    UnDereferensable,
     Unaddressable,
+    NotInteger,
+    UnIndexiable,
 }
 
 impl fmt::Display for TokenError {
@@ -182,11 +184,17 @@ impl fmt::Display for TokenError {
             TokenError::DefferentType => {
                 write!(f, "deffrent type")
             }
-            TokenError::Undereferensable => {
-                write!(f, "undereferensable type")
+            TokenError::UnDereferensable => {
+                write!(f, "UnDereferensable type")
             }
             TokenError::Unaddressable => {
                 write!(f, "can not get address")
+            }
+            TokenError::NotInteger => {
+                write!(f, "not integer value")
+            }
+            TokenError::UnIndexiable => {
+                write!(f, "unindexable variable")
             }
         }
     }

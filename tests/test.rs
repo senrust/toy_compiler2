@@ -176,3 +176,7 @@ fn sizeof_test() {
     do_test("sizeof");
 }
 
+#[test]
+fn array_test() {
+    do_test("array");
+}

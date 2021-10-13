@@ -1,5 +1,5 @@
 use crate::definition::types::Type;
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, ops::Deref, rc::Rc};
 
 #[derive(Debug, PartialEq)]
 pub struct GlobalVariable {
@@ -26,6 +26,37 @@ impl Variable {
         match self {
             Variable::GlobalVal(global_val) => global_val.type_.clone(),
             Variable::LocalVal(local_val) => local_val.type_.clone(),
+        }
+    }
+
+    pub fn get_array_elem_type(&self) -> Result<Type, ()> {
+        if self.is_array_type() {
+            match self {
+                Variable::GlobalVal(global_val) => {
+                    let (_array_len, elem_type) = global_val.type_.array.as_ref().unwrap();
+                    Ok(elem_type.deref().clone())
+                }
+                Variable::LocalVal(local_val) => {
+                    let (_array_len, elem_type) = local_val.type_.array.as_ref().unwrap();
+                    Ok(elem_type.deref().clone())
+                }
+            }
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn is_pointer_type(&self) -> bool {
+        match self {
+            Variable::GlobalVal(global_val) => global_val.type_.is_pointer(),
+            Variable::LocalVal(local_val) => local_val.type_.is_pointer(),
+        }
+    }
+
+    pub fn is_array_type(&self) -> bool {
+        match self {
+            Variable::GlobalVal(global_val) => global_val.type_.is_array(),
+            Variable::LocalVal(local_val) => local_val.type_.is_array(),
         }
     }
 }

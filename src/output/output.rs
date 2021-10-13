@@ -158,7 +158,11 @@ pub fn push_variable_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
 }
 
 // ポインターが指すアドレスを求める
-pub fn push_deref_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
+// long **a に対して,
+// **aのアドレスは
+// aのアドレスを積み,
+// aのアドレスの指す値を取り出すを2回繰り返す
+pub fn push_pointer_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     let mut deref_ast = ast;
     let mut deref_count = 0;
     while let AstKind::Deref = &deref_ast.kind {
@@ -175,13 +179,53 @@ pub fn push_deref_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     }
 }
 
-// ポインターが指す値を求める
+// ポインターが指すアドレスの値を求める
 // ポインタが指すアドレスの値を取る
 pub fn push_deref_value<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
-    push_deref_address(ast, buf);
+    push_pointer_address(ast, buf);
     buf.output_pop("rax");
     buf.output("    mov rax, [rax]");
     buf.output_push("rax");
+}
+
+// 配列が指すアドレスを求める
+// long a[5][10]の場合, 
+// a[2][3]へのアクセスでは
+// deref(deref(a, 2, size=80), 3, size=8)となっている
+// そこで 3 * 8をスタックに積み,
+// 2*80をスタックに積む,
+// 最後aのアドレスをスタックに積んで,
+// a + 160 をスタックに積む
+// そして a + 24 をスタックに積む
+pub fn push_array_elem_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
+    let mut index_ast = ast;
+    let mut indexing_times = 0;
+    while let AstKind::Index = &index_ast.kind {
+        // index番号をスタックに積む
+        let index_num_ast = index_ast.right.take().unwrap();
+        output_ast(*index_num_ast, buf);
+        // その配列のサイズをスタックに積む
+        buf.output_push_num(index_ast.type_.size as u64);
+        // サイズ×index番号でオフセットを求めスタックに積む
+        write_operation(buf, "imul");
+        index_ast = *index_ast.left.unwrap();
+        indexing_times += 1;
+    }
+    //  indexのあとはindex_astは変数なので, この変数のアドレスを取得する
+    let val_ast = index_ast; 
+    push_variable_address(val_ast, buf);
+    // あとはオフセットを足す
+    for _ in 0..indexing_times {
+        write_operation(buf, "add");
+    }
+}
+
+pub fn push_array_elem_value<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
+    push_array_elem_address(ast, buf);
+    buf.output_pop("rax");
+    buf.output("    mov rax, [rax]");
+    buf.output_push("rax");
+
 }
 
 // アドレスを取得する
@@ -195,6 +239,12 @@ pub fn push_address<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
         }
         AstKind::Variable(_val) => {
             push_variable_address(*address_ast, buf);
+        }
+        AstKind::Deref => {
+            push_pointer_address(*address_ast, buf);
+        }
+        AstKind::Index => {
+            push_array_elem_address(*address_ast, buf);
         }
         _ => output_ast(ast, buf),
     }
@@ -249,6 +299,7 @@ pub fn output_ast<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
         AstKind::Variable(_val) => push_variable_value(ast, buf),
         AstKind::Address => push_address(ast, buf),
         AstKind::Deref => push_deref_value(ast, buf),
+        AstKind::Index => push_array_elem_value(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
         AstKind::FuncionCall(_func, _type) => execute_funccall(ast, buf),
         _ => unsupported_ast_err(&ast),

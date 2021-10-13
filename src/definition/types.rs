@@ -163,8 +163,23 @@ impl Type {
         }
     }
 
+    pub fn is_integer_type(&self) -> bool {
+        if self.primitive.is_none() {
+            false
+        } else {
+            !matches!(
+                self.primitive.as_ref().unwrap(),
+                PrimitiveType::F32 | PrimitiveType::F64
+            )
+        }
+    }
+
     pub fn is_pointer(&self) -> bool {
         self.pointer.is_some()
+    }
+
+    pub fn is_array(&self) -> bool {
+        self.array.is_some()
     }
 }
 

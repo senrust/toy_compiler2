@@ -1,26 +1,27 @@
 use crate::ast::ast::*;
 use crate::definition::definitions::Definitions;
 use crate::definition::number::Number;
-use crate::definition::symbols::Symbol;
-use crate::definition::types::Type;
 use crate::definition::reservedwords::Reserved;
+use crate::definition::symbols::Symbol;
+use crate::definition::types::PrimitiveType;
+use crate::definition::types::Type;
 use crate::token::error::*;
 use crate::token::token::*;
 use std::ops::Deref;
 
 // ビット演算が可能なASTかチェックする
-fn can_execute_bit_operation() {
-
-}
+fn can_execute_bit_operation() {}
 
 // 算術演算が可能なASTかチェックする
-fn can_execute_arithmetic_operation() {
-
-}
+fn can_execute_arithmetic_operation() {}
 
 // 論理演算が可能なASTかチェックする
-fn can_execute_logical_operation() {
+fn can_execute_logical_operation() {}
 
+// 2引数の演算ではより大きな型に拡張して行う必要があるため,
+// 型が異なる場合は型変換のASTを挟むようにする
+pub fn convert_primitive_ast_type(ast: &mut Ast, _convert_type: PrimitiveType) -> Type {
+    ast.type_.clone()
 }
 
 // 2引数の演算ではより大きな型に拡張して行う必要があるため,

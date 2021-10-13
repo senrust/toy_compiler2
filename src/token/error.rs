@@ -48,6 +48,16 @@ fn print_token_error_info(err: TokenError, info: &TokenInfo) {
     eprintln!("line{}, pos{}, error: {}", info.line + 1, info.pos + 1, err);
 }
 
+fn unclosed_token_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::UnClosed, info);
+    exit(-1);
+}
+
+fn unclosed_tokenend_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::ReachEndWithoutClose, info);
+    exit(-1);
+}
+
 pub fn invalid_number_token_err(info: &TokenInfo) -> ! {
     // get invalid token
     let invalidnum_token = get_token(info);
@@ -62,16 +72,6 @@ pub fn unexpected_token_err(info: &TokenInfo) -> ! {
 
 pub fn notenough_token_err(info: &TokenInfo) -> ! {
     print_token_error_info(TokenError::NotEnoughToken, info);
-    exit(-1);
-}
-
-fn unclosed_token_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::UnClosed, info);
-    exit(-1);
-}
-
-fn unclosed_tokenend_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::ReachEndWithoutClose, info);
     exit(-1);
 }
 
@@ -141,11 +141,21 @@ pub fn output_defferenttype_err(tokens: &Tokens) -> ! {
 }
 
 pub fn output_undereferensable_err(info: &TokenInfo) -> ! {
-    print_token_error_info(TokenError::Undereferensable, info);
+    print_token_error_info(TokenError::UnDereferensable, info);
     exit(-1);
 }
 
 pub fn output_unaddressable_err(info: &TokenInfo) -> ! {
     print_token_error_info(TokenError::Unaddressable, info);
+    exit(-1);
+}
+
+pub fn output_notinteger_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::NotInteger, info);
+    exit(-1);
+}
+
+pub fn output_unindexiable_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::UnIndexiable, info);
     exit(-1);
 }
