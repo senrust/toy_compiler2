@@ -36,20 +36,20 @@ fn write_assignment<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output_push("rdi");
 }
 
-fn exetute_mul<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_mul<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     if let AstKind::Operation(Operation::Mul) = ast.kind {
-        output_ast(ast.right.take().unwrap().as_mut(), buf);
-        output_ast(ast.left.take().unwrap().as_mut(), buf);
+        output_ast(*ast.right.take().unwrap(), buf);
+        output_ast(*ast.left.take().unwrap(), buf);
         write_operation(buf, "imul");
     } else {
-        unexpected_ast_err(ast, "operation *");
+        unexpected_ast_err(&ast, "operation *");
     }
 }
 
-fn exetute_div<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_div<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     if let AstKind::Operation(Operation::Div | Operation::Rem) = ast.kind {
-        output_ast(ast.right.take().unwrap().as_mut(), buf);
-        output_ast(ast.left.take().unwrap().as_mut(), buf);
+        output_ast(*ast.right.take().unwrap(), buf);
+        output_ast(*ast.left.take().unwrap(), buf);
         write_pop_two_values(buf);
         buf.output("    cqo");
         buf.output("    idiv rdi");
@@ -59,34 +59,34 @@ fn exetute_div<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
             buf.output_push("rdx");
         }
     } else {
-        unexpected_ast_err(ast, "operation / or %");
+        unexpected_ast_err(&ast, "operation / or %");
     }
 }
 
-fn exetute_add<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_add<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let operation = match ast.kind {
         AstKind::Operation(Operation::Add) => "add",
         AstKind::Operation(Operation::Sub) => "sub",
-        _ => unexpected_ast_err(ast, "operation + or -"),
+        _ => unexpected_ast_err(&ast, "operation + or -"),
     };
 
-    output_ast(ast.right.take().unwrap().as_mut(), buf);
-    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    output_ast(*ast.right.take().unwrap(), buf);
+    output_ast(*ast.left.take().unwrap(), buf);
     write_operation(buf, operation);
 }
 
-fn exetute_eq<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_eq<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let euality = match ast.kind {
         AstKind::Operation(Operation::Eq) => "sete",
         AstKind::Operation(Operation::NotEq) => "setne",
-        _ => unexpected_ast_err(ast, "operation == or !="),
+        _ => unexpected_ast_err(&ast, "operation == or !="),
     };
-    output_ast(ast.right.take().unwrap().as_mut(), buf);
-    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    output_ast(*ast.right.take().unwrap(), buf);
+    output_ast(*ast.left.take().unwrap(), buf);
     write_compararison(buf, euality);
 }
 
-fn exetute_comp<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_comp<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     // Gt, Geは右辺と左辺を反転させたLt, Leとして扱う
     if let AstKind::Operation(Operation::Gt | Operation::Ge) = ast.kind {
         std::mem::swap(&mut ast.right, &mut ast.left);
@@ -100,59 +100,59 @@ fn exetute_comp<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     let comparison = match ast.kind {
         AstKind::Operation(Operation::Lt) => "setl",
         AstKind::Operation(Operation::Le) => "setle",
-        _ => unexpected_ast_err(ast, "operation >, <, >= or <="),
+        _ => unexpected_ast_err(&ast, "operation >, <, >= or <="),
     };
-    output_ast(ast.right.take().unwrap().as_mut(), buf);
-    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    output_ast(*ast.right.take().unwrap(), buf);
+    output_ast(*ast.left.take().unwrap(), buf);
     write_compararison(buf, comparison);
 }
 
-fn exetute_not<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    output_ast(ast.operand.take().unwrap().as_mut(), buf);
+fn exetute_not<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
+    output_ast(*ast.operand.take().unwrap(), buf);
     write_value_compararison(buf, "sete", 0);
 }
 
-fn exetute_bitnot<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_bitnot<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let instruction = "    not rax";
-    output_ast(ast.operand.take().unwrap().as_mut(), buf);
+    output_ast(*ast.operand.take().unwrap(), buf);
     buf.output_pop("rax");
     buf.output(instruction);
     buf.output_push("rax");
 }
 
-fn exetute_assign<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_assign<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     // 左辺値が被代入可能か確認
     let left_ast = ast.left.take().unwrap();
     match &left_ast.kind {
         AstKind::Variable(_val) => {
             // 代入は右から評価する
-            output_ast(ast.right.take().unwrap().as_mut(), buf);
-            push_variable_address(left_ast.as_ref(), buf);
+            output_ast(*ast.right.take().unwrap(), buf);
+            push_variable_address(*left_ast, buf);
         }
         AstKind::Deref => {
-            output_ast(ast.right.take().unwrap().as_mut(), buf);
-            push_deref_address(left_ast.as_ref(), buf);
+            output_ast(*ast.right.take().unwrap(), buf);
+            push_deref_address(*left_ast, buf);
         }
-        _ => unassignable_ast_err(ast),
+        _ => unassignable_ast_err(&ast),
     }
 
     write_assignment(buf);
 }
 
-fn exetute_bit_operation<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_bit_operation<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let bit_operation = match ast.kind {
         AstKind::Operation(Operation::BitAnd) => "and",
         AstKind::Operation(Operation::BitOr) => "or",
         AstKind::Operation(Operation::BitXor) => "xor",
-        _ => unexpected_ast_err(ast, "operation &, | or ^"),
+        _ => unexpected_ast_err(&ast, "operation &, | or ^"),
     };
 
-    output_ast(ast.left.take().unwrap().as_mut(), buf);
-    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    output_ast(*ast.left.take().unwrap(), buf);
+    output_ast(*ast.right.take().unwrap(), buf);
     write_operation(buf, bit_operation);
 }
 
-fn exetute_logical_and<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_logical_and<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     // andのネストがある場合(A && B && C ), Aが0の時点でB, Cの比較をせずにネストを抜けることが可能.
     // これを行うにはAndのネスト判定とジャンプ先ラベルを保持している必要がある.
     // これを行うには状態管理が必要だが, 実装の手間が増えるので今回は逐次比較を行う
@@ -166,14 +166,14 @@ fn exetute_logical_and<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 
     let comp_zero = "    cmp rax, 0";
     // 左側の値を計算
-    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    output_ast(*ast.left.take().unwrap(), buf);
     buf.output_pop("rax");
     // 0と比較
     buf.output(comp_zero);
     // 0ならばFalse時の処理を行う
     buf.output(&jump_false);
     // 右側の値を計算
-    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    output_ast(*ast.right.take().unwrap(), buf);
     buf.output_pop("rax");
     // 0と比較
     buf.output(comp_zero);
@@ -191,7 +191,7 @@ fn exetute_logical_and<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     buf.output(&end_label);
 }
 
-fn exetute_logical_or<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn exetute_logical_or<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     // ORがネストされた状態((A || B || C)内のどれかで1になったらネストを抜けた先までジャンプできる
     // これにより高速化できるが, ジャンプ先管理の手間が増えるので今回はネストごとに逐次比較する
     let true_label_index = buf.label_index;
@@ -207,14 +207,14 @@ fn exetute_logical_or<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
 
     let comp_zero = "    cmp rax, 0";
     // 左側の値を計算
-    output_ast(ast.left.take().unwrap().as_mut(), buf);
+    output_ast(*ast.left.take().unwrap(), buf);
     buf.output_pop("rax");
     // 0と比較
     buf.output(comp_zero);
     // 1ならば(0でないならば)True時の処理を行う
     buf.output(&jump_true);
     // 右側の値を計算
-    output_ast(ast.right.take().unwrap().as_mut(), buf);
+    output_ast(*ast.right.take().unwrap(), buf);
     buf.output_pop("rax");
     // 0と比較
     buf.output(comp_zero);
@@ -235,7 +235,7 @@ fn exetute_logical_or<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
     buf.output(&end_label);
 }
 
-pub fn output_operation_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+pub fn output_operation_ast<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
         AstKind::Operation(Operation::Mul) => exetute_mul(ast, buf),
@@ -252,6 +252,6 @@ pub fn output_operation_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) 
         AstKind::Operation(Operation::BitNot) => exetute_bitnot(ast, buf),
         AstKind::Operation(Operation::And) => exetute_logical_and(ast, buf),
         AstKind::Operation(Operation::Or) => exetute_logical_or(ast, buf),
-        _ => unsupported_ast_err(ast),
+        _ => unsupported_ast_err(&ast),
     }
 }

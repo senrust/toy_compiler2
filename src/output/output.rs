@@ -131,38 +131,38 @@ pub fn output_function_epilogue<T: Write>(buf: &mut OutputBuffer<T>) {
     buf.output("    ret");
 }
 
-fn push_number<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn push_number<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     if let AstKind::ImmidiateInterger(Number::U64(num)) = ast.kind {
         buf.output_push_num(num)
     } else {
-        unexpected_ast_err(ast, "imidiate number");
+        unexpected_ast_err(&ast, "imidiate number");
     }
 }
 
-pub fn push_variable_value<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
+pub fn push_variable_value<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     if let AstKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
         let offset = local_val.frame_offset;
         buf.output(&format!("    push [rbp - {}]", offset));
     }
 }
 
-pub fn push_variable_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
+pub fn push_variable_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     // 現在はローカル変数のみ対応
     if let AstKind::Variable(Variable::LocalVal(local_val)) = &ast.kind {
         let lea_instruction = format!("    lea rax, [rbp - {}]", local_val.frame_offset);
         buf.output(&lea_instruction);
         buf.output_push("rax");
     } else {
-        unexpected_ast_err(ast, "local variable");
+        unexpected_ast_err(&ast, "local variable");
     }
 }
 
 // ポインターが指すアドレスを求める
-pub fn push_deref_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
+pub fn push_deref_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     let mut deref_ast = ast;
     let mut deref_count = 0;
     while let AstKind::Deref = &deref_ast.kind {
-        deref_ast = deref_ast.operand.as_ref().unwrap();
+        deref_ast = *deref_ast.operand.unwrap();
         deref_count += 1;
     }
     let val_ast = deref_ast;
@@ -177,7 +177,7 @@ pub fn push_deref_address<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
 
 // ポインターが指す値を求める
 // ポインタが指すアドレスの値を取る
-pub fn push_deref_value<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
+pub fn push_deref_value<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     push_deref_address(ast, buf);
     buf.output_pop("rax");
     buf.output("    mov rax, [rax]");
@@ -187,14 +187,14 @@ pub fn push_deref_value<T: Write>(ast: &Ast, buf: &mut OutputBuffer<T>) {
 // アドレスを取得する
 // アドレスを取得できるのは変数型と, プリミティブ型を返す演算のみ
 // AST作成時にチェック済み
-pub fn push_address<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+pub fn push_address<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let address_ast = ast.operand.take().unwrap();
     match &address_ast.kind {
         AstKind::Address => {
             unaddressable_ast_err(&address_ast);
         }
         AstKind::Variable(_val) => {
-            push_variable_address(&address_ast, buf);
+            push_variable_address(*address_ast, buf);
         }
         _ => output_ast(ast, buf),
     }
@@ -212,22 +212,24 @@ pub fn write_pop_two_values<T: Write>(buf: &mut OutputBuffer<T>) {
 }
 
 // 複文のコンパイル
-fn excute_exprs<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn excute_exprs<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let expr_ast_vec = ast.exprs.take().unwrap();
-    for mut expr_ast in expr_ast_vec {
-        output_ast(&mut expr_ast, buf);
+    for expr_ast in expr_ast_vec {
         // 複文側の最後, 各制御文側でpopしているのでこちらではpopしない
         // if文やfor文の{}後も複文の制御構文側でpopしているのでこちらでは行わない
-        if !matches!(
-            expr_ast.kind,
+        if matches!(
+            &expr_ast.kind,
             AstKind::Expressions | AstKind::Control(Control::For | Control::If | Control::While)
         ) {
+            output_ast(expr_ast, buf);
             buf.output_pop("rax");
+        } else {
+            output_ast(expr_ast, buf);
         }
     }
 }
 
-pub fn output_expr_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+pub fn output_expr_ast<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(_) => {
             output_operation_ast(ast, buf);
@@ -235,11 +237,11 @@ pub fn output_expr_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         }
         AstKind::Control(_) => output_control_ast(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
-        _ => unsupported_ast_err(ast),
+        _ => unsupported_ast_err(&ast),
     }
 }
 
-pub fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+pub fn output_ast<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(_) => output_operation_ast(ast, buf),
         AstKind::Control(_) => output_control_ast(ast, buf),
@@ -249,19 +251,19 @@ pub fn output_ast<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
         AstKind::Deref => push_deref_value(ast, buf),
         AstKind::Expressions => excute_exprs(ast, buf),
         AstKind::FuncionCall(_func, _type) => execute_funccall(ast, buf),
-        _ => unsupported_ast_err(ast),
+        _ => unsupported_ast_err(&ast),
     }
 }
 
-fn output_push_arg_to_stack<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn output_push_arg_to_stack<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     push_variable_address(ast, buf);
     write_pop_two_values(buf);
     buf.output("    mov [rax], rdi");
 }
 
 // 引数をローカルスタックに格納する
-pub fn output_push_args_to_stack<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
-    if let Some(args_ast) = &mut ast.exprs {
+pub fn output_push_args_to_stack<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
+    if let Some(args_ast) = ast.exprs {
         let argcount = args_ast.len();
         // 後ろの引数からスタックに積んでいく
         for register in FUNC_ARG_REGISTERS[0..argcount].iter().rev() {
@@ -273,17 +275,17 @@ pub fn output_push_args_to_stack<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer
     }
 }
 
-fn output_function<T: Write>(ast: &mut Ast, buf: &mut OutputBuffer<T>) {
+fn output_function<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::FunctionImplementation((func_name, local_val_size)) => {
             output_function_prelude(func_name, local_val_size, buf);
-            let mut func_context_ast = ast.context.take().unwrap();
+            let func_context_ast = ast.context.take().unwrap();
             // 引数をスタックフレームに格納
             output_push_args_to_stack(ast, buf);
-            output_ast(func_context_ast.as_mut(), buf);
+            output_ast(*func_context_ast, buf);
             output_function_epilogue(buf);
         }
-        _ => unsupported_ast_err(ast),
+        _ => unsupported_ast_err(&ast),
     }
 }
 
@@ -296,7 +298,7 @@ pub fn output_assembly(asts: Vec<Ast>, output_file: &Path) {
     let buf = BufWriter::new(fs::File::create(output_file).unwrap());
     let mut outputbuf = OutputBuffer::new(buf);
     write_assembly_header(&mut outputbuf);
-    for mut ast in asts {
-        output_function(&mut ast, &mut outputbuf);
+    for ast in asts {
+        output_function(ast, &mut outputbuf);
     }
 }
