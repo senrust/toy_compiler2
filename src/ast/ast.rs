@@ -228,7 +228,7 @@ impl Ast {
         }
     }
 
-    fn new_expressions_ast(
+    pub fn new_expressions_ast(
         info: TokenInfo,
         type_: Type,
         exprs: Vec<Ast>,

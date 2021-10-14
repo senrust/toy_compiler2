@@ -426,7 +426,7 @@ fn ast_assign_op(
     (assing_op_info, op_ast)
 }
 
-// assign = formula ("=" formula | assign_op)*
+// assign = formula ("=" formula | assign_op)* ("," assign)
 // 左辺値が左辺値となりうるかの確認はコンパイル側でおこなう
 pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let mut assignee_ast = ast_formula(tokens, definitions);
@@ -453,5 +453,19 @@ pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             assignee_ast,
             ast_assigner,
         );
+        break;
     }
+
+    if tokens.expect_symbol(Symbol::Comma) {
+        let info = assignee_ast.info;
+        let mut exprs: Vec<Ast> = vec![assignee_ast];
+        let exprs_type = definitions.get_type("void").unwrap();
+        while tokens.expect_symbol(Symbol::Comma) {
+            tokens.consume_symbol(Symbol::Comma);
+            let assign_ast = ast_assign(tokens, definitions);
+            exprs.push(assign_ast);
+        }
+        assignee_ast = Ast::new_expressions_ast(info, exprs_type, exprs, None);
+    }
+    assignee_ast
 }

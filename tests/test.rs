@@ -190,3 +190,8 @@ fn increment_test() {
 fn assignope_test() {
     do_test("assignope");
 }
+
+#[test]
+fn multsentence_test() {
+    do_test("multsentence");
+}

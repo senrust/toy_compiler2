@@ -1,0 +1,6 @@
+long main() {
+    long a;
+    long b;
+    a = 5, b = 2;
+    return b;
+}
