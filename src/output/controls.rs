@@ -60,8 +60,8 @@ pub fn execute_for<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     // 条件式
     if let Some(condition_ast) = for_conditions[1].take() {
         output_formula_ast(condition_ast, buf);
-        // 条件式が成立する場合はif文のEndまでジャンプ
-        buf.output("    cmp rax, 1");
+        // 条件式が成立しない場合はif文のEndまでジャンプ
+        buf.output("    cmp rax, 0");
         buf.output(&format!("    je .LabelForEnd{}", label_index));
     }
     // for内容

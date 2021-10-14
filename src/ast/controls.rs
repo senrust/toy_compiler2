@@ -17,7 +17,7 @@ pub fn ast_return(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 
     let info = tokens.consume_reserved(Reserved::Return);
     if tokens.expect_symbol(Symbol::SemiColon) {
-        if !res_type.is_none() {
+        if res_type.is_some() {
             output_different_returntype_err(&info);
         }
         let type_ = definitions.get_type("void").unwrap();

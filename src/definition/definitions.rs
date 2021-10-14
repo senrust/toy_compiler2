@@ -103,3 +103,9 @@ impl Definitions {
         self.implemented_function.insert(funcname.to_string())
     }
 }
+
+impl Default for Definitions {
+    fn default() -> Self {
+        Definitions::new()
+    }
+}

@@ -214,9 +214,9 @@ pub fn push_array_elem_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     //  indexのあとはindex_astは変数なので, この変数のアドレスを取得する
     let val_ast = index_ast;
     push_variable_address(val_ast, buf);
-    // あとはオフセットを足す
+    // あとはオフセットを引く
     for _ in 0..indexing_times {
-        write_operation(buf, "add");
+        write_operation(buf, "sub");
     }
 }
 
@@ -261,6 +261,7 @@ pub fn write_pop_two_values<T: Write>(buf: &mut OutputBuffer<T>) {
 }
 
 // 複文のコンパイル
+#[allow(clippy::branches_sharing_code)]
 fn excute_exprs<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let expr_ast_vec = ast.exprs.take().unwrap();
     for expr_ast in expr_ast_vec {
@@ -271,9 +272,9 @@ fn excute_exprs<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
             AstKind::Expressions | AstKind::Control(Control::For | Control::If | Control::While)
         ) {
             output_ast(expr_ast, buf);
-            buf.output_pop("rax");
         } else {
             output_ast(expr_ast, buf);
+            buf.output_pop("rax");
         }
     }
 }

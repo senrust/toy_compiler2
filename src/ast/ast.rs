@@ -347,9 +347,9 @@ pub fn ast_variable_op(tokens: &mut Tokens, definitions: &mut Definitions) -> As
 fn ast_primary_op(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if let TokenKind::Identifier(ident) = &tokens.get().unwrap().kind {
         if let Some(_func) = definitions.get_function(ident) {
-            return ast_functioncall(tokens, definitions);
+            ast_functioncall(tokens, definitions)
         } else {
-            return ast_variable_op(tokens, definitions);
+            ast_variable_op(tokens, definitions)
         }
     } else {
         unreachable!();

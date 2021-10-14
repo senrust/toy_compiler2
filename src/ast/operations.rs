@@ -427,12 +427,11 @@ fn ast_assign_op(
 }
 
 // assign = formula ("=" formula | assign_op)* ("," assign)
-// 左辺値が左辺値となりうるかの確認はコンパイル側でおこなう
 pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let mut assignee_ast = ast_formula(tokens, definitions);
     loop {
         if !tokens.expect_symbols(&ASSIGN_SYMBOLS) {
-            return assignee_ast;
+            break;
         }
         let ast_info;
         let ast_assigner;
@@ -453,7 +452,6 @@ pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             assignee_ast,
             ast_assigner,
         );
-        break;
     }
 
     if tokens.expect_symbol(Symbol::Comma) {

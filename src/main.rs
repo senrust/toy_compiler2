@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(clippy::result_unit_err, clippy::module_inception)]
 mod ast;
 mod definition;
 mod output;

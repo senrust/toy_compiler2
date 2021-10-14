@@ -200,4 +200,3 @@ fn multsentence_test() {
 fn initialize_declaration_test() {
     do_test("initialize_declaration");
 }
-

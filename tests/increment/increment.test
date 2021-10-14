@@ -4,7 +4,6 @@ long main() {
     long c;
     a = 5;
     b = ++a;      // b = 6, a = 6
-    c = a++;      // c = 6, a = 7
-    c = a + b;    
+    c = a++;      // c = 6, a = 7 
     return a + b + c; // 19
 }
