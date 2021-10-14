@@ -11,6 +11,7 @@ use crate::definition::symbols::*;
 use crate::definition::types::*;
 use crate::definition::variables::*;
 use crate::token::error::*;
+use crate::token::token::TokenKind;
 use crate::token::token::{TokenInfo, Tokens};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -298,8 +299,7 @@ fn ast_index(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 }
 
 // 配列アクセス
-pub fn ast_array_access(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    let val_ast = ast_variable(tokens, definitions);
+pub fn ast_array_access(val_ast: Ast, tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if val_ast.type_.is_array() {
         let (_array_len, index_type) = val_ast.type_.array.as_ref().unwrap();
         let index_type = index_type.deref().clone();
@@ -323,31 +323,49 @@ pub fn ast_array_access(tokens: &mut Tokens, definitions: &mut Definitions) -> A
     }
 }
 
-// primary = num | variable | functioncall | "(" formula ")" | variable "[" formula )"]" | ("++" | "--") variable | variable ("++" | "--")
+// variable_op = variable | ( "."indet | -> indet | "[" formula "]")* | ("++" | "--" | "(" ")" )
+// val->val.val[10].val++ (primaryである必要)
+// val->val.val[10].val() (funcpointerである必要)
+// に対応できるようにする
+pub fn ast_variable_op(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    let mut val_ast = ast_variable(tokens, definitions);
+    loop {
+        if tokens.expect_symbol(Symbol::LeftSquareBracket) {
+            val_ast = ast_array_access(val_ast, tokens, definitions)
+        } else if tokens.expect_symbols(&[Symbol::Increment, Symbol::Decrement]) {
+            val_ast = ast_backward_increment(val_ast, tokens, definitions)
+        } else {
+            break;
+        }
+    }
+    val_ast
+}
+
+// primary_op =  variable | functioncall
+fn ast_primary_op(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    if let TokenKind::Identifier(ident) = &tokens.get().unwrap().kind {
+        if let Some(_func) = definitions.get_function(ident) {
+            return ast_functioncall(tokens, definitions);
+        } else {
+            return ast_variable_op(tokens, definitions);
+        }
+    } else {
+        unreachable!();
+    }
+}
+
+// primary = num | primary_op | "(" formula ")" | | ("++" | "--") variable
 pub fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_number() {
         ast_number(tokens, definitions)
     } else if tokens.expect_identifier() {
-        if tokens.expect_next_symbol(Symbol::LeftParenthesis, 1) {
-            ast_functioncall(tokens, definitions)
-        } else if tokens.expect_next_symbol(Symbol::LeftSquareBracket, 1) {
-            ast_array_access(tokens, definitions)
-        } else if tokens.expect_next_symbols(&[Symbol::Increment, Symbol::Decrement], 1) {
-            ast_backward_increment(tokens, definitions)
-        } else {
-            ast_variable(tokens, definitions)
-        }
+        ast_primary_op(tokens, definitions)
     } else if tokens.expect_symbol(Symbol::LeftParenthesis) {
         // drop "(" token
         tokens.consume_symbol(Symbol::LeftParenthesis);
-        let add_ast = ast_formula(tokens, definitions);
-        if tokens.expect_symbol(Symbol::RightParenthesis) {
-            // drop ")" token
-            tokens.consume_symbol(Symbol::RightParenthesis);
-            add_ast
-        } else {
-            output_unclosed_token_err(tokens);
-        }
+        let formula_ast = ast_formula(tokens, definitions);
+        tokens.consume_symbol(Symbol::RightParenthesis);
+        formula_ast
     } else if tokens.expect_symbols(&[Symbol::Increment, Symbol::Decrement]) {
         ast_forward_increment(tokens, definitions)
     } else {

@@ -84,7 +84,7 @@ fn increment_ast(variable_ast: Ast, operation: String, incinfo: TokenInfo) -> (A
 // 前置インクリメントは+1をassignしてから値をスタックに積む
 pub fn ast_forward_increment(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     let (operation, info) = get_increment_type(tokens);
-    let variable_ast = ast_variable(tokens, definitions);
+    let variable_ast = ast_variable_op(tokens, definitions);
     let (assign_ast, _variable_ast) = increment_ast(variable_ast, operation, info);
     Ast::new_single_operation_ast(
         Operation::ForwardIncrement,
@@ -95,16 +95,19 @@ pub fn ast_forward_increment(tokens: &mut Tokens, definitions: &mut Definitions)
 }
 
 // 後置インクリメントは値を積んでから+1をassignする
-pub fn ast_backward_increment(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    let variable_ast = ast_variable(tokens, definitions);
+pub fn ast_backward_increment(
+    val_ast: Ast,
+    tokens: &mut Tokens,
+    _definitions: &mut Definitions,
+) -> Ast {
     let (operation, info) = get_increment_type(tokens);
-    let (assign_ast, variable_ast) = increment_ast(variable_ast, operation, info);
+    let (assign_ast, val_ast) = increment_ast(val_ast, operation, info);
     Ast::new_binary_operation_ast(
         Operation::BackwardIncrement,
         assign_ast.info,
         assign_ast.type_.clone(),
         assign_ast,
-        variable_ast,
+        val_ast,
     )
 }
 
