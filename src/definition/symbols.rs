@@ -34,9 +34,9 @@ pub enum Symbol {
     RemAssign,          // %=
     LeftShiftAssign,    // <<=
     RightShiftAssign,   // >>=
-    AndAssign,          // &=
-    OrAssign,           // |=
-    XorAssign,          // ^=
+    BitAndAssign,       // &=
+    BitOrAssign,        // |=
+    BitXorAssign,       // ^=
     LeftParenthesis,    // (
     RightParenthesis,   // )
     LeftSquareBracket,  // [
@@ -82,9 +82,9 @@ pub fn get_token_symbol(token: String) -> Symbol {
         "%=" => Symbol::RemAssign,
         "<<=" => Symbol::LeftShiftAssign,
         ">>=" => Symbol::RightShiftAssign,
-        "&=" => Symbol::AndAssign,
-        "|=" => Symbol::OrAssign,
-        "^=" => Symbol::XorAssign,
+        "&=" => Symbol::BitAndAssign,
+        "|=" => Symbol::BitOrAssign,
+        "^=" => Symbol::BitXorAssign,
         "(" => Symbol::LeftParenthesis,
         ")" => Symbol::RightParenthesis,
         "[" => Symbol::LeftSquareBracket,

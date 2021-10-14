@@ -185,3 +185,8 @@ fn array_test() {
 fn increment_test() {
     do_test("increment");
 }
+
+#[test]
+fn assignope_test() {
+    do_test("assignope");
+}

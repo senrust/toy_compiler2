@@ -1,0 +1,11 @@
+long main() {
+    long a;
+    long b;
+    long c;
+    a = 0;
+    b = 2;
+    a += 2;
+    b *= a;
+    b -= 1;
+    return b;
+}

@@ -21,6 +21,8 @@ pub enum Operation {
     Mul,
     Div,
     Rem,
+    LeftShift,
+    RightShift,
     Eq,     // ==
     NotEq,  // !=
     Gt,     // >

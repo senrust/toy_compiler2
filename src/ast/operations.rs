@@ -9,6 +9,20 @@ use crate::token::error::*;
 use crate::token::token::*;
 use std::ops::Deref;
 
+static ASSIGN_SYMBOLS: [Symbol; 11] = [
+    Symbol::Assign,
+    Symbol::AddAssign,
+    Symbol::BitAndAssign,
+    Symbol::DivAssign,
+    Symbol::LeftShiftAssign,
+    Symbol::MulAssign,
+    Symbol::BitOrAssign,
+    Symbol::RemAssign,
+    Symbol::RightShiftAssign,
+    Symbol::SubAssign,
+    Symbol::BitXorAssign,
+];
+
 // ビット演算が可能なASTかチェックする
 fn can_execute_bit_operation() {}
 
@@ -372,24 +386,71 @@ pub fn ast_formula(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     ast_logical(Symbol::Or, tokens, definitions)
 }
 
-// assign = formula ("=" assign)*
+// assign_op = ("+=" | ) formula
+fn ast_assign_op(
+    asiggnee_ast: Ast,
+    tokens: &mut Tokens,
+    definitions: &mut Definitions,
+) -> (TokenInfo, Ast) {
+    let ope_kind: Operation;
+    if tokens.expect_symbol(Symbol::AddAssign) {
+        ope_kind = Operation::Add;
+    } else if tokens.expect_symbol(Symbol::BitAndAssign) {
+        ope_kind = Operation::BitAnd;
+    } else if tokens.expect_symbol(Symbol::DivAssign) {
+        ope_kind = Operation::Div;
+    } else if tokens.expect_symbol(Symbol::LeftShiftAssign) {
+        ope_kind = Operation::LeftShift;
+    } else if tokens.expect_symbol(Symbol::MulAssign) {
+        ope_kind = Operation::Mul;
+    } else if tokens.expect_symbol(Symbol::BitOrAssign) {
+        ope_kind = Operation::BitOr;
+    } else if tokens.expect_symbol(Symbol::RemAssign) {
+        ope_kind = Operation::Rem;
+    } else if tokens.expect_symbol(Symbol::RightShiftAssign) {
+        ope_kind = Operation::RightShift;
+    } else if tokens.expect_symbol(Symbol::SubAssign) {
+        ope_kind = Operation::Sub;
+    } else {
+        ope_kind = Operation::BitXor;
+    }
+    let assing_op_info = tokens.consume();
+    let formula_ast = ast_formula(tokens, definitions);
+    let op_ast = Ast::new_binary_operation_ast(
+        ope_kind,
+        assing_op_info,
+        formula_ast.type_.clone(),
+        asiggnee_ast,
+        formula_ast,
+    );
+    (assing_op_info, op_ast)
+}
+
+// assign = formula ("=" formula | assign_op)*
 // 左辺値が左辺値となりうるかの確認はコンパイル側でおこなう
 pub fn ast_assign(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
-    let assignee_ast = ast_formula(tokens, definitions);
-    let mut assign_ast = assignee_ast;
+    let mut assignee_ast = ast_formula(tokens, definitions);
     loop {
-        if !tokens.expect_symbol(Symbol::Assign) {
-            return assign_ast;
+        if !tokens.expect_symbols(&ASSIGN_SYMBOLS) {
+            return assignee_ast;
         }
-        let ast_info = tokens.consume_symbol(Symbol::Assign);
-        let ast_assigner = ast_assign(tokens, definitions);
+        let ast_info;
+        let ast_assigner;
+        if tokens.expect_symbol(Symbol::Assign) {
+            ast_info = tokens.consume_symbol(Symbol::Assign);
+            ast_assigner = ast_formula(tokens, definitions);
+        } else {
+            let tmp = ast_assign_op(assignee_ast.clone(), tokens, definitions);
+            ast_info = tmp.0;
+            ast_assigner = tmp.1;
+        }
         // とりあえず代入の型は8バイトにしておく
         let type_ = definitions.get_type("long").unwrap();
-        assign_ast = Ast::new_binary_operation_ast(
+        assignee_ast = Ast::new_binary_operation_ast(
             Operation::Assign,
             ast_info,
             type_,
-            assign_ast,
+            assignee_ast,
             ast_assigner,
         );
     }
