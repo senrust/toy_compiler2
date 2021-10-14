@@ -34,6 +34,8 @@ pub enum Operation {
     BitNot, // ~
     And,    // &&
     Or,     // ||
+    ForwardIncrement,
+    BackwardIncrement,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,7 +61,7 @@ pub enum AstKind {
     ImmidiateInterger(Number),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ast {
     pub kind: AstKind,
     pub info: TokenInfo,
@@ -321,7 +323,7 @@ pub fn ast_array_access(tokens: &mut Tokens, definitions: &mut Definitions) -> A
     }
 }
 
-// primary = num | variable | functioncall | "(" formula ")" | variable "[" formula )"]"
+// primary = num | variable | functioncall | "(" formula ")" | variable "[" formula )"]" | ("++" | "--") variable | variable ("++" | "--")
 pub fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     if tokens.expect_number() {
         ast_number(tokens, definitions)
@@ -330,6 +332,8 @@ pub fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
             ast_functioncall(tokens, definitions)
         } else if tokens.expect_next_symbol(Symbol::LeftSquareBracket, 1) {
             ast_array_access(tokens, definitions)
+        } else if tokens.expect_next_symbols(&[Symbol::Increment, Symbol::Decrement], 1) {
+            ast_backward_increment(tokens, definitions)
         } else {
             ast_variable(tokens, definitions)
         }
@@ -344,6 +348,8 @@ pub fn ast_primary(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
         } else {
             output_unclosed_token_err(tokens);
         }
+    } else if tokens.expect_symbols(&[Symbol::Increment, Symbol::Decrement]) {
+        ast_forward_increment(tokens, definitions)
     } else {
         output_unexpected_token_err(tokens);
     }

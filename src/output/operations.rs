@@ -235,6 +235,18 @@ fn exetute_logical_or<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     buf.output(&end_label);
 }
 
+fn exetute_increment<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
+    // 前置インクリメント -> val = val + 1 を実行してスタックに積む
+    // 後置インクリメント -> valをスタックに積み, val=val + 1を実行してスタックに積む. そしてスタックから削除
+    if AstKind::Operation(Operation::ForwardIncrement) == ast.kind {
+        output_ast(*ast.operand.take().unwrap(), buf);
+    } else {
+        output_ast(*ast.right.take().unwrap(), buf);
+        output_ast(*ast.left.take().unwrap(), buf);
+        buf.output_pop("rax");
+    }
+}
+
 pub fn output_operation_ast<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(Operation::Add | Operation::Sub) => exetute_add(ast, buf),
@@ -252,6 +264,9 @@ pub fn output_operation_ast<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
         AstKind::Operation(Operation::BitNot) => exetute_bitnot(ast, buf),
         AstKind::Operation(Operation::And) => exetute_logical_and(ast, buf),
         AstKind::Operation(Operation::Or) => exetute_logical_or(ast, buf),
+        AstKind::Operation(Operation::ForwardIncrement | Operation::BackwardIncrement) => {
+            exetute_increment(ast, buf)
+        }
         _ => unsupported_ast_err(&ast),
     }
 }

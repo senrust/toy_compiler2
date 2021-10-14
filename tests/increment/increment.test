@@ -1,0 +1,10 @@
+long main() {
+    long a;
+    long b;
+    long c;
+    a = 5;
+    b = ++a;      // b = 6, a = 6
+    c = a++;      // c = 6, a = 7
+    c = a + b;    
+    return a + b + c; // 19
+}

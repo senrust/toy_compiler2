@@ -159,3 +159,8 @@ pub fn output_unindexiable_err(info: &TokenInfo) -> ! {
     print_token_error_info(TokenError::UnIndexiable, info);
     exit(-1);
 }
+
+pub fn output_unexecutable_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::UnExecutable, info);
+    exit(-1);
+}

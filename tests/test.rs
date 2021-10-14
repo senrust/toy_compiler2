@@ -180,3 +180,8 @@ fn sizeof_test() {
 fn array_test() {
     do_test("array");
 }
+
+#[test]
+fn increment_test() {
+    do_test("increment");
+}

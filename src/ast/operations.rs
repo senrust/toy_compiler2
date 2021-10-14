@@ -36,6 +36,78 @@ pub fn expand_assign_operation_type(left: &Ast, _right: &Ast) -> Type {
     left.type_.clone()
 }
 
+fn get_increment_type(tokens: &mut Tokens) -> (String, TokenInfo) {
+    let operation;
+    if tokens.expect_symbol(Symbol::Increment) {
+        operation = "add";
+    } else {
+        operation = "sub";
+    }
+    let info = tokens.consume_symbols(&[Symbol::Increment, Symbol::Decrement]);
+    (operation.to_string(), info)
+}
+
+fn increment_ast(variable_ast: Ast, operation: String, incinfo: TokenInfo) -> (Ast, Ast) {
+    let increment_type = variable_ast.type_.clone();
+    if !variable_ast.type_.is_primitive_type() {
+        output_unexecutable_err(&variable_ast.info)
+    }
+    let num_1_ast = Ast::new_integer_ast(Number::U64(1), incinfo, increment_type.clone());
+    let increment_ast;
+    if operation == "add" {
+        increment_ast = Ast::new_binary_operation_ast(
+            Operation::Add,
+            incinfo,
+            increment_type.clone(),
+            variable_ast.clone(),
+            num_1_ast,
+        );
+    } else {
+        increment_ast = Ast::new_binary_operation_ast(
+            Operation::Sub,
+            incinfo,
+            increment_type.clone(),
+            variable_ast.clone(),
+            num_1_ast,
+        );
+    }
+    let assign_ast = Ast::new_binary_operation_ast(
+        Operation::Assign,
+        incinfo,
+        increment_type,
+        variable_ast.clone(),
+        increment_ast,
+    );
+    (assign_ast, variable_ast)
+}
+
+// 前置インクリメントは+1をassignしてから値をスタックに積む
+pub fn ast_forward_increment(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    let (operation, info) = get_increment_type(tokens);
+    let variable_ast = ast_variable(tokens, definitions);
+    let (assign_ast, _variable_ast) = increment_ast(variable_ast, operation, info);
+    Ast::new_single_operation_ast(
+        Operation::ForwardIncrement,
+        assign_ast.info,
+        assign_ast.type_.clone(),
+        assign_ast,
+    )
+}
+
+// 後置インクリメントは値を積んでから+1をassignする
+pub fn ast_backward_increment(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
+    let variable_ast = ast_variable(tokens, definitions);
+    let (operation, info) = get_increment_type(tokens);
+    let (assign_ast, variable_ast) = increment_ast(variable_ast, operation, info);
+    Ast::new_binary_operation_ast(
+        Operation::BackwardIncrement,
+        assign_ast.info,
+        assign_ast.type_.clone(),
+        assign_ast,
+        variable_ast,
+    )
+}
+
 fn ast_not(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     // drop "!" token
     let not_info = tokens.consume_symbol(Symbol::Not);

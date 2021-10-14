@@ -189,7 +189,7 @@ pub fn push_deref_value<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
 }
 
 // 配列が指すアドレスを求める
-// long a[5][10]の場合, 
+// long a[5][10]の場合,
 // a[2][3]へのアクセスでは
 // deref(deref(a, 2, size=80), 3, size=8)となっている
 // そこで 3 * 8をスタックに積み,
@@ -212,7 +212,7 @@ pub fn push_array_elem_address<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
         indexing_times += 1;
     }
     //  indexのあとはindex_astは変数なので, この変数のアドレスを取得する
-    let val_ast = index_ast; 
+    let val_ast = index_ast;
     push_variable_address(val_ast, buf);
     // あとはオフセットを足す
     for _ in 0..indexing_times {
@@ -225,7 +225,6 @@ pub fn push_array_elem_value<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     buf.output_pop("rax");
     buf.output("    mov rax, [rax]");
     buf.output_push("rax");
-
 }
 
 // アドレスを取得する
@@ -279,14 +278,40 @@ fn excute_exprs<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     }
 }
 
-pub fn output_expr_ast<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
+// 式のコンパイル
+// スタックには値を積まない
+pub fn output_formula_ast<T: Write>(ast: Ast, buf: &mut OutputBuffer<T>) {
     match &ast.kind {
         AstKind::Operation(_) => {
             output_operation_ast(ast, buf);
             buf.output_pop("rax");
         }
         AstKind::Control(_) => output_control_ast(ast, buf),
+        AstKind::ImmidiateInterger(_num) => {
+            push_number(ast, buf);
+            buf.output_pop("rax");
+        }
+        AstKind::Variable(_val) => {
+            push_variable_value(ast, buf);
+            buf.output_pop("rax");
+        }
+        AstKind::Address => {
+            push_address(ast, buf);
+            buf.output_pop("rax");
+        }
+        AstKind::Deref => {
+            push_deref_value(ast, buf);
+            buf.output_pop("rax");
+        }
+        AstKind::Index => {
+            push_array_elem_value(ast, buf);
+            buf.output_pop("rax");
+        }
         AstKind::Expressions => excute_exprs(ast, buf),
+        AstKind::FuncionCall(_func, _type) => {
+            execute_funccall(ast, buf);
+            buf.output_pop("rax");
+        }
         _ => unsupported_ast_err(&ast),
     }
 }

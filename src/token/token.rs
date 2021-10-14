@@ -143,6 +143,7 @@ pub enum TokenError {
     Unaddressable,
     NotInteger,
     UnIndexiable,
+    UnExecutable,
 }
 
 impl fmt::Display for TokenError {
@@ -195,6 +196,9 @@ impl fmt::Display for TokenError {
             }
             TokenError::UnIndexiable => {
                 write!(f, "unindexable variable")
+            }
+            TokenError::UnExecutable => {
+                write!(f, "can not execute this operation")
             }
         }
     }
@@ -264,10 +268,32 @@ impl Tokens {
         false
     }
 
+    pub fn expect_symbols(&self, symbols: &[Symbol]) -> bool {
+        if let Some(token) = self.vec.get(self.cur) {
+            for symbol in symbols {
+                if token.expect_symbol(symbol) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     pub fn expect_next_symbol(&self, symbol: Symbol, step: usize) -> bool {
         if let Some(token) = self.vec.get(self.cur + step) {
             if token.expect_symbol(&symbol) {
                 return true;
+            }
+        }
+        false
+    }
+
+    pub fn expect_next_symbols(&self, symbols: &[Symbol], step: usize) -> bool {
+        if let Some(token) = self.vec.get(self.cur + step) {
+            for symbol in symbols {
+                if token.expect_symbol(symbol) {
+                    return true;
+                }
             }
         }
         false
@@ -281,6 +307,20 @@ impl Tokens {
             } else {
                 output_unexpected_token_err(self)
             }
+        } else {
+            output_unexpected_token_err(self)
+        }
+    }
+
+    pub fn consume_symbols(&mut self, symbols: &[Symbol]) -> TokenInfo {
+        if let Some(token) = self.vec.get(self.cur) {
+            for symbol in symbols {
+                if token.expect_symbol(symbol) {
+                    self.cur += 1;
+                    return token.info;
+                }
+            }
+            output_unexpected_token_err(self)
         } else {
             output_unexpected_token_err(self)
         }

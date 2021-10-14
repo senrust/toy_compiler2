@@ -31,11 +31,11 @@ pub fn execute_if<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
         buf.output(&format!("    je .LabelIfEnd{}", label_index));
     }
 
-    output_expr_ast(if_context[0].take().unwrap(), buf);
+    output_formula_ast(if_context[0].take().unwrap(), buf);
     // else文がある場合
     if has_else {
         buf.output(&format!(".LabelElse{}:", label_index));
-        output_expr_ast(if_context[1].take().unwrap(), buf);
+        output_formula_ast(if_context[1].take().unwrap(), buf);
     } else {
         buf.output(&format!(".LabelIfEnd{}:", label_index));
     }
@@ -52,22 +52,22 @@ pub fn execute_for<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     let for_context = ast.context.take().unwrap();
     // 初期化式
     if let Some(initialize_ast) = for_conditions[0].take() {
-        output_expr_ast(initialize_ast, buf);
+        output_formula_ast(initialize_ast, buf);
     }
     // ループ開始ラベル
     buf.output(&format!(".LabelForBegin{}:", label_index));
     // 条件式
     if let Some(condition_ast) = for_conditions[1].take() {
-        output_expr_ast(condition_ast, buf);
+        output_formula_ast(condition_ast, buf);
         // 条件式が成立する場合はif文のEndまでジャンプ
         buf.output("    cmp rax, 1");
         buf.output(&format!("    je .LabelForEnd{}", label_index));
     }
     // for内容
-    output_expr_ast(*for_context, buf);
+    output_formula_ast(*for_context, buf);
     // 更新式
     if let Some(condition_ast) = for_conditions[2].take() {
-        output_expr_ast(condition_ast, buf);
+        output_formula_ast(condition_ast, buf);
     }
     buf.output(&format!("    jmp .LabelForBegin{}", label_index));
     buf.output(&format!(".LabelForEnd{}:", label_index));
@@ -94,7 +94,7 @@ pub fn execute_while<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
     buf.output("    cmp rax, 0");
     buf.output(&format!("    je .LabelWhileEnd{}", label_index));
     // while内容
-    output_expr_ast(while_context, buf);
+    output_formula_ast(while_context, buf);
     buf.output(&format!("    jmp .LabelWhileBegin{}", label_index));
     buf.output(&format!(".LabelWhileEnd{}:", label_index));
     // ループ情報の削除

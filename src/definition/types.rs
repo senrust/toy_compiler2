@@ -163,6 +163,14 @@ impl Type {
         }
     }
 
+    pub fn is_primitive_type(&self) -> bool {
+        if self.primitive.is_none() {
+            false
+        } else {
+            true
+        }
+    }
+
     pub fn is_integer_type(&self) -> bool {
         if self.primitive.is_none() {
             false
