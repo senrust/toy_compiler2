@@ -7,6 +7,7 @@ pub struct Definitions {
     variable: VariableDeclarations,
     function: FunctionDefinitions,
     implemented_function: HashSet<String>,
+    currentfunction: Option<String>,
 }
 
 impl Definitions {
@@ -19,7 +20,12 @@ impl Definitions {
             variable,
             function,
             implemented_function: HashSet::new(),
+            currentfunction: None,
         }
+    }
+
+    pub fn get_curent_funcname(&self) -> Option<&String> {
+        self.currentfunction.as_ref()
     }
 
     pub fn get_number_type(&self, num: &Number) -> Type {
@@ -38,7 +44,7 @@ impl Definitions {
         self.type_.define_type(name, type_)
     }
 
-    pub fn get_function(&mut self, name: &str) -> Option<Function> {
+    pub fn get_function(&self, name: &str) -> Option<Function> {
         self.function.get_function(name)
     }
 
@@ -67,8 +73,18 @@ impl Definitions {
         self.variable.get_variable(name)
     }
 
-    pub fn initialize_local_scope(&mut self) {
-        self.variable.clear_local_val_scope()
+    pub fn enter_function_implemetation(&mut self, funcname: &str) {
+        self.currentfunction = Some(funcname.to_string());
+        self.variable.clear_local_val_scope();
+    }
+
+    pub fn exit_function_implemetation(&mut self) {
+        self.currentfunction = None;
+        self.variable.clear_local_val_scope();
+    }
+
+    pub fn exit_current_function(&mut self, funcname: &str) {
+        self.currentfunction = Some(funcname.to_string());
     }
 
     pub fn enter_new_local_scope(&mut self) {
@@ -81,10 +97,6 @@ impl Definitions {
 
     pub fn get_local_val_frame_size(&self) -> usize {
         self.variable.get_local_val_frame_size()
-    }
-
-    pub fn clear_local_val_scope(&mut self) {
-        self.variable.clear_local_val_scope()
     }
 
     pub fn can_implement_function(&mut self, funcname: &str) -> bool {

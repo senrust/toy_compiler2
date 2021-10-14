@@ -164,3 +164,8 @@ pub fn output_unexecutable_err(info: &TokenInfo) -> ! {
     print_token_error_info(TokenError::UnExecutable, info);
     exit(-1);
 }
+
+pub fn output_different_returntype_err(info: &TokenInfo) -> ! {
+    print_token_error_info(TokenError::DifferentReturnType, info);
+    exit(-1);
+}

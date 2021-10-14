@@ -144,6 +144,7 @@ pub enum TokenError {
     NotInteger,
     UnIndexiable,
     UnExecutable,
+    DifferentReturnType,
 }
 
 impl fmt::Display for TokenError {
@@ -199,6 +200,9 @@ impl fmt::Display for TokenError {
             }
             TokenError::UnExecutable => {
                 write!(f, "can not execute this operation")
+            }
+            TokenError::DifferentReturnType => {
+                write!(f, "diffrent return type")
             }
         }
     }

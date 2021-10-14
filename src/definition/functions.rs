@@ -51,7 +51,7 @@ impl FunctionDefinitions {
         }
     }
 
-    pub fn get_function(&mut self, name: &str) -> Option<Function> {
+    pub fn get_function(&self, name: &str) -> Option<Function> {
         self.dict.get(name).cloned()
     }
 

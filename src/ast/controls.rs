@@ -11,13 +11,27 @@ use crate::token::token::Tokens;
 // return は returnする対象をもつ
 pub fn ast_return(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
     // consume "return"
+    let current_funcname = definitions.get_curent_funcname().unwrap();
+    let current_func = definitions.get_function(current_funcname).unwrap();
+    let res_type = current_func.ret;
+
     let info = tokens.consume_reserved(Reserved::Return);
-    let return_value = ast_assign(tokens, definitions);
-    let type_ = return_value.type_.clone();
-    // 今後関数の定義されている戻り型と比較を行う
-    // 即;ならばvoid型に設定する
-    let context = vec![return_value];
-    Ast::new_control_ast(info, type_, Control::Return, None, Some(context), None)
+    if tokens.expect_symbol(Symbol::SemiColon) {
+        if !res_type.is_none() {
+            output_different_returntype_err(&info);
+        }
+        let type_ = definitions.get_type("void").unwrap();
+        Ast::new_control_ast(info, type_, Control::Return, None, None, None)
+    } else {
+        let return_value = ast_assign(tokens, definitions);
+        let type_ = return_value.type_.clone();
+        if let Some(_res_type) = res_type {
+        } else {
+            output_different_returntype_err(&info)
+        }
+        let context = vec![return_value];
+        Ast::new_control_ast(info, type_, Control::Return, None, Some(context), None)
+    }
 }
 
 // if = "if" "(" assign ")" expr ("else" expr)?

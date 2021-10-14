@@ -7,9 +7,10 @@ use crate::output::output::*;
 // return文のコンパイル
 // returnする値のastはexprs[0]
 pub fn execute_return<T: Write>(mut ast: Ast, buf: &mut OutputBuffer<T>) {
-    let mut return_expr = ast.exprs.take().unwrap();
-    output_ast(return_expr.swap_remove(0), buf);
-    buf.output_pop("rax");
+    if let Some(mut return_expr) = ast.exprs.take() {
+        output_ast(return_expr.swap_remove(0), buf);
+        buf.output_pop("rax");
+    }
     output_function_epilogue(buf);
 }
 

@@ -509,7 +509,7 @@ fn ast_funcution_implementaion(
     definitions: &mut Definitions,
 ) -> Ast {
     // 関数実装ASTを作成
-    definitions.initialize_local_scope();
+    definitions.enter_function_implemetation(&func_name);
     let mut args_expr: Option<Vec<Ast>> = None;
     // 引数がある場合
     if let Some(ref argtypes) = func_type.function.as_ref().unwrap().args {
@@ -532,7 +532,7 @@ fn ast_funcution_implementaion(
     }
     let expfunc_context_ast = ast_exprs(tokens, definitions);
     let frame_size = definitions.get_local_val_frame_size();
-    definitions.clear_local_val_scope();
+    definitions.exit_function_implemetation();
     // 関数AST作成
     Ast::new_function_implementation_ast(
         &func_name,
