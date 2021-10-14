@@ -415,7 +415,9 @@ fn ast_exprs(tokens: &mut Tokens, definitions: &mut Definitions) -> Ast {
 
         //ローカル変数宣言
         if is_type_token(tokens, definitions) {
-            local_val_declaration(tokens, definitions);
+            if let Some(initialize_ast) = local_val_declaration(tokens, definitions) {
+                exprs.push(initialize_ast);
+            }
             continue;
         }
 

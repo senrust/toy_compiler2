@@ -1,3 +1,5 @@
+use super::ast::{Ast, Operation};
+use super::operations::ast_formula;
 use crate::definition::definitions::Definitions;
 use crate::definition::symbols::Symbol;
 use crate::definition::types::Type;
@@ -74,11 +76,26 @@ pub fn cousume_type_token(
     (type_, valname, info)
 }
 
-pub fn local_val_declaration(tokens: &mut Tokens, definitions: &mut Definitions) {
+pub fn local_val_declaration(tokens: &mut Tokens, definitions: &mut Definitions) -> Option<Ast> {
     let (type_, name, info) = cousume_type_token(tokens, definitions);
-    let declare_sucess = definitions.declare_local_val(&name, type_).is_ok();
-    if declare_sucess {
-        tokens.consume_symbol(Symbol::SemiColon);
+    let defined_val = definitions.declare_local_val(&name, type_.clone());
+    if let Ok(val) = defined_val {
+        if tokens.expect_symbol(Symbol::Assign) {
+            let assgin_info = tokens.consume_symbol(Symbol::Assign);
+            let initial_value_ast = ast_formula(tokens, definitions);
+            let val_ast = Ast::new_variable_ast(val, info, type_.clone());
+            tokens.consume_symbol(Symbol::SemiColon);
+            Some(Ast::new_binary_operation_ast(
+                Operation::Assign,
+                assgin_info,
+                type_,
+                val_ast,
+                initial_value_ast,
+            ))
+        } else {
+            tokens.consume_symbol(Symbol::SemiColon);
+            None
+        }
     } else {
         output_alreadydeclared_variable_err(&info);
     }
