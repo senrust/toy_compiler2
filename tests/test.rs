@@ -195,3 +195,9 @@ fn assignope_test() {
 fn multsentence_test() {
     do_test("multsentence");
 }
+
+#[test]
+fn initialize_declaration_test() {
+    do_test("initialize_declaration");
+}
+

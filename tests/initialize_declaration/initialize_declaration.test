@@ -1,0 +1,5 @@
+long main() {
+    long a = 3;
+    long b = a + 2; 
+    return b;
+}
